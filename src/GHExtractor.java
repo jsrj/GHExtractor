@@ -18,15 +18,13 @@ public class GHExtractor {
     private String         username;
     private String         authToken; //<-- probably not a good idea to have published on github, but since its just a dummy repository, its whatever.
     private String         targetRepository;
-    private String         tableToExtract;
     private List<String[]> DirectoryMap = new ArrayList<>();
 
     // Initializer
-    public GHExtractor(String tRepo, String uName, String authT, String targetTable) {
+    public GHExtractor(String tRepo, String uName, String authT) {
         this.username         = uName;
         this.authToken        = authT;
         this.targetRepository = tRepo;
-        this.tableToExtract   = targetTable;
     }
 
     // Only runs when testing within the GHExtractor class itself.
@@ -39,13 +37,12 @@ public class GHExtractor {
         GHExtractor extractor = new GHExtractor(
                  "GHExtractor",
                 "jsrj",
-                 "f8f36786490e94b6ba7d9398ebec8d6cd1929f07",
-                "demo.ddl"
+                 "f8f36786490e94b6ba7d9398ebec8d6cd1929f07"
         );
 
 
         try {
-            extractor.GetTableFromGithub("files-from-github");
+            extractor.GetTableFromGithub("demo.sql","files-from-github");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -157,23 +154,31 @@ public class GHExtractor {
         }
     }
 
-    private void GetAllFromGithub() throws Exception {
+    private void GetAllFromGithub(String outDirectory) throws Exception {
         // Similar to GetTableFromGithub except that this will pull data for every single file.
+        // This should be called when a user of the parent app does not select a specific table.
+        this.GetDirectoryMap();
+
+        for (String[] entry: this.DirectoryMap) {
+            System.out.println("Downloading "+entry[0]+" to "+outDirectory+"...");
+            this.GetTableFromGithub(entry[0], outDirectory);
+        }
     }
 
-    private void GetTableFromGithub(String outDirectory) throws Exception {
-        String tableName = this.tableToExtract; // <-- inline refactor once code is in place.
+    private void GetTableFromGithub(String tableName, String outDirectory) throws Exception {
+
+        // Step 0: if user of parent app specifies a table, then use that table name, otherwise use "*" to denote all tables.
         System.out.println(
                 " ----------------------- \n" +
                 "| Contacting Github... | \n" +
                 " ----------------------- \n"
         );
         // Step 1: Retrieve directory map for repository provided at instantiation of app.
+        System.out.println("Searching for '"+((tableName != "*")? tableName : "ALL TABLES")+"' in directory map");
         this.GetDirectoryMap();
 
-        // Step 2: Search for {tableName} script raw data from Github using directory map.
-        System.out.println("Searching for '"+tableName+"' in directory map");
-
+            // Step 2: Search for {tableName or all tables} script raw data from Github using directory map.
+            boolean found = false;
             for (String[] filePath: this.DirectoryMap) {
                 // Checks for empty, malformed, or non-existent directory map
                 if (filePath.length <= 1) {
@@ -184,28 +189,31 @@ public class GHExtractor {
                     String filename = filePath[0];
                     String location = filePath[1];
 
-        // Step 3: Parse raw data from {tableName} file.
-                    if (!(filename == null) && filename.contains(tableName)) {
-                        System.out.println("Found!");
+                    // Step 3: Parse raw data from {tableName} file.
+                    if ( !(filename == null) && (tableName.contains("*") || filename.contains(tableName)) ) {
+                        System.out.println("Downloading "+filename+" to "+outDirectory+"...");
                         String rawData = this.GetFileData(location, filename);
-                        System.out.println("\n-- START OF FILE FROM GH --"     );
-                        System.out.println(rawData                             );
-                        System.out.println("-- EOF --"                         );
 
-        // Step 4: Save raw data as a file to provided directory.
-        // Note:   Filename will match what is on github.
-                        System.out.println("Saving "+filename+" to "+outDirectory+"...");
+                        //System.out.println("\n-- START OF FILE FROM GH --"     );
+                        //System.out.println(rawData                             );
+                        //System.out.println("-- EOF --"                         );
+                        //System.out.println("Saving "+filename+" to "+outDirectory+"...");
+
+                        // Step 4: Save raw data as a file to provided directory.
+                        // Note:   Filename will match what is on github.
                         PrintWriter writer = new PrintWriter("./"+outDirectory+"/"+filename, "UTF-8");
                         for (String line: rawData.split("\n")) {
 
                             writer.println(line);
+                            found = true;
                         }
                     writer.close();
-                    return;
                     }
                 }
             }
             // Only gets output if the above conditions are not met.
-            System.out.println("Sorry: "+tableName+" was not found. Either it is not located in the repository, or was not listed in the directory map.");
+        if (!found) {
+            System.out.println("Sorry: "+tableName+" was not found. Either it is not located in the repository, or was not listed in the directory map. No file downloaded.");
+        }
     }
 }
