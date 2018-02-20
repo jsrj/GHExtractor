@@ -15,7 +15,7 @@ public class GHExtractor {
 
     // Props - hardcoded for now. Should be set upon app initialization.
     private String         username;
-    private String         authToken;
+    private String         authToken; //<-- probably not a good idea to have published on github, but since its just a dummy repository, its whatever.
     private String         targetRepository;
     private String         tableToExtract;
     private List<String[]> DirectoryMap = new ArrayList<>();
