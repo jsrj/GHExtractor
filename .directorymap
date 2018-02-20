@@ -8,3 +8,4 @@
 #        [ FILENAME  ] => /[  ROUTE   ]/
 
 demo.ddl => /test-directory/
+demo.sql => /test-directory/

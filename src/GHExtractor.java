@@ -39,7 +39,7 @@ public class GHExtractor {
                  "GHExtractor",
                 "jsrj",
                  "f8f36786490e94b6ba7d9398ebec8d6cd1929f07",
-                "demo.ddl"
+                "blep.ddl"
         );
 
 
@@ -128,8 +128,8 @@ public class GHExtractor {
             // Do the things with the directory map...
             for (String map: directoryMap.split("\n")) {
 
-                // Ignore lines commented out with '#'
-                if (!map.startsWith("#")) {
+                // Ignore lines commented out with '#' or that are empty.
+                if (!(map.startsWith("#")) && (map.length() > 0)) {
 
                     // Convert each line from .directorymap into a String array of structure [0:{filename}, 1:{location}]
                     String[] mapRoute = map.split(" => ");
@@ -142,9 +142,8 @@ public class GHExtractor {
             // Simply outputs dialogue of all files and routes found in directory map.
             int i = 0;
             for (String[] item: this.DirectoryMap) {
-                if (!(item.length <= 1)) {
-                    System.out.println("empty entry");
-                    System.out.println("DirectoryMap["+this.DirectoryMap.indexOf(item)+"]...");
+                if (!(item.length <= 0)) {
+                    System.out.println("Entry #"+(this.DirectoryMap.indexOf(item)+1)+": ");
                     for (String unit: item) {
                         String whatIs = (i == 0)? "Filename: " : "Location: ";
                         System.out.println(whatIs+unit);
@@ -177,7 +176,7 @@ public class GHExtractor {
             for (String[] filePath: this.DirectoryMap) {
                 // Checks for empty, malformed, or non-existent .directorymap
                 if (filePath.length <= 1) {
-                    System.out.println("Warning: .directorymap not in repository, or does not contain any data. ");
+                    System.out.println("Warning: either "+tableName+" is not listed, the directory map file is not located in the repository root, or does not exist.");
                 } else {
                     String filename = filePath[0];
                     String location = filePath[1];
@@ -186,7 +185,7 @@ public class GHExtractor {
                     if (!(filename == null) && filename.contains(tableName)) {
                         System.out.println("Found!");
 
-                        System.out.println("\n-- START OF FILE --\n"           );
+                        System.out.println("\n-- START OF FILE --"           );
                         System.out.println(this.GetFileData(location, filename));
                         System.out.println("-- END OF FILE --"                 );
                     }
