@@ -72,7 +72,6 @@ public class GHExtractor {
                     break;
 
                 case 200:
-                    System.out.println("Status "+responseCode+": "+session.getResponseMessage()+".\n");
                     String       inputLine;
                     StringBuffer response = new StringBuffer();
                     BufferedReader in = new BufferedReader(new InputStreamReader(session.getInputStream()));
@@ -156,6 +155,10 @@ public class GHExtractor {
         }
     }
 
+    private void GetAllFromGithub() throws Exception {
+        // Similar to GetTableFromGithub except that this will pull data for every single file.
+    }
+
     private void GetTableFromGithub() throws Exception {
         String tableName = this.tableToExtract; // <-- inline refactor once code is in place.
         System.out.println(
@@ -168,9 +171,21 @@ public class GHExtractor {
 
         // Step 2: Search for {tableName} script raw data from Github using directory map.
         System.out.println("Searching for '"+tableName+"'...");
+        for (String[] filePath: this.DirectoryMap) {
+            String filename = filePath[0];
+            String location = filePath[1];
+            if (filename.contains(tableName)) {
 
         // Step 3: Parse raw data from {tableName} file.
-        // Step 4: Save raw data as a file to provided directory. If directory doesnt exist, create it.
+                System.out.println("Found!");
+
+                System.out.println("\n-- START OF FILE --\n");
+                System.out.println(this.GetFileData(location, filename));
+                System.out.println("-- END OF FILE --");
+            }
+        }
+
+        // Step 4: Save raw data as a file to provided directory.
         // Note:   Filename will match what is on github.
     }
 }
