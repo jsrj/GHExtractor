@@ -39,7 +39,7 @@ public class GHExtractor {
                  "GHExtractor",
                 "jsrj",
                  "f8f36786490e94b6ba7d9398ebec8d6cd1929f07",
-                "blep.ddl"
+                "demo.ddl"
         );
 
 
@@ -174,24 +174,30 @@ public class GHExtractor {
         System.out.println("Searching for '"+tableName+"' in directory map");
 
             for (String[] filePath: this.DirectoryMap) {
-                // Checks for empty, malformed, or non-existent .directorymap
+                // Checks for empty, malformed, or non-existent directory map
                 if (filePath.length <= 1) {
-                    System.out.println("Warning: either "+tableName+" is not listed, the directory map file is not located in the repository root, or does not exist.");
+                    System.out.println("Warning: either the directory map file is not located in the repository root, or does not exist.");
+
                 } else {
+
                     String filename = filePath[0];
                     String location = filePath[1];
+                    boolean found   = false;
 
         // Step 3: Parse raw data from {tableName} file.
                     if (!(filename == null) && filename.contains(tableName)) {
                         System.out.println("Found!");
 
-                        System.out.println("\n-- START OF FILE --"           );
+                        System.out.println("\n-- START OF FILE FROM GH --"           );
                         System.out.println(this.GetFileData(location, filename));
-                        System.out.println("-- END OF FILE --"                 );
+                        System.out.println("-- EOF --"                 );
+                        found = true;
+                        return;
                     }
                 }
             }
-
+            // Only gets output if the above conditions are not met.
+            System.out.println("Sorry: "+tableName+" was not found. Either it is not located in the repository, or was not listed in the directory map.");
 
         // Step 4: Save raw data as a file to provided directory.
         // Note:   Filename will match what is on github.
