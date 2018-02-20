@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +45,7 @@ public class GHExtractor {
 
 
         try {
-            extractor.GetTableFromGithub();
+            extractor.GetTableFromGithub("files-from-github");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -160,7 +161,7 @@ public class GHExtractor {
         // Similar to GetTableFromGithub except that this will pull data for every single file.
     }
 
-    private void GetTableFromGithub() throws Exception {
+    private void GetTableFromGithub(String outDirectory) throws Exception {
         String tableName = this.tableToExtract; // <-- inline refactor once code is in place.
         System.out.println(
                 " ----------------------- \n" +
@@ -182,24 +183,29 @@ public class GHExtractor {
 
                     String filename = filePath[0];
                     String location = filePath[1];
-                    boolean found   = false;
 
         // Step 3: Parse raw data from {tableName} file.
                     if (!(filename == null) && filename.contains(tableName)) {
                         System.out.println("Found!");
+                        String rawData = this.GetFileData(location, filename);
+                        System.out.println("\n-- START OF FILE FROM GH --"     );
+                        System.out.println(rawData                             );
+                        System.out.println("-- EOF --"                         );
 
-                        System.out.println("\n-- START OF FILE FROM GH --"           );
-                        System.out.println(this.GetFileData(location, filename));
-                        System.out.println("-- EOF --"                 );
-                        found = true;
-                        return;
+        // Step 4: Save raw data as a file to provided directory.
+        // Note:   Filename will match what is on github.
+                        System.out.println("Saving "+filename+" to "+outDirectory+"...");
+                        PrintWriter writer = new PrintWriter("./"+outDirectory+"/"+filename, "UTF-8");
+                        for (String line: rawData.split("\n")) {
+
+                            writer.println(line);
+                        }
+                    writer.close();
+                    return;
                     }
                 }
             }
             // Only gets output if the above conditions are not met.
             System.out.println("Sorry: "+tableName+" was not found. Either it is not located in the repository, or was not listed in the directory map.");
-
-        // Step 4: Save raw data as a file to provided directory.
-        // Note:   Filename will match what is on github.
     }
 }
