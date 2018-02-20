@@ -2,20 +2,37 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
-import oracle.jdbc.OracleDriver;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URL;
-import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import javax.net.ssl.HttpsURLConnection;
+//import javax.xml.ws.http.HTTPException;
 
 public class App {
 
-    OracleDriver driver = new OracleDriver();
+    // Props - hardcoded for now. Should be set upon app initialization.
+    private String         username;
+    private String         authToken;
+    private String         targetRepository;
+    private List<String[]> DirectoryMap = new ArrayList<>();
+
+    // Initializer
+    public App(String tRepo, String uName, String authT) {
+        this.username         = uName;
+        this.authToken        = authT;
+        this.targetRepository = tRepo;
+    }
 
     public static void main(String[] args) {
-        App http = new App();
+
+        App http = new App(
+                 "test-repo",
+                "jsrj",
+                 "f8f36786490e94b6ba7d9398ebec8d6cd1929f07"
+        );
 
         System.out.println(
                 " ----------------------- \n" +
@@ -23,120 +40,107 @@ public class App {
                 " ----------------------- \n"
         );
         try {
-            http.sendGet();
+            http.GetDirectoryMap();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    // HTTP GET request - Read a specific file from within a repository.
-    private void sendGet() throws Exception {
+    private String startSession(String Mode, String URI) throws Exception {
 
-        Statement  statement;
-        Connection cnx;
-        // Create a connection to the database
+        HttpsURLConnection session = (HttpsURLConnection) new URL(URI).openConnection(  );
+        session.setRequestMethod     (Mode                                              );
+        session.setRequestProperty   ("User-Agent"    , "GH-Extractor/1.0"              ); // Required Always.
+        session.setRequestProperty   ("Accept"        , "application/vnd.github.v3+json"); // Required Always.
+        session.setRequestProperty   ("Username"      ,  this.username                  );
+        session.setRequestProperty   ("Authorization" ,  this.authToken                 );
+
+        int responseCode = session.getResponseCode();
         try {
-            String dbDriver       = "oracle.jdbc.OracleDriver";
-            String serverName     = "127.0.0.1";
-            String portNumber     = "1521";
-            String sid            = "mydatabase";
-            String url            = "jdbc:oracle:thin:@" + serverName + ":" + portNumber + ":" + sid;
-            String username       = "username";
-            String password       = "password";
+            switch (responseCode) {
+                // Should be extended to account for all Server codes.
+                case 404:
+                    System.out.println("Error "+responseCode+": "+URI+" "+session.getResponseMessage()+". Check route path.\n");
+                    break;
 
-            System.out.println(url);
+                case 401:
+                    System.out.println("Error "+responseCode+": "+session.getResponseMessage()+". Bad credentials?\n");
+                    break;
 
-            Class.forName(dbDriver);
+                case 200:
+                    System.out.println("Status "+responseCode+": "+session.getResponseMessage()+".\n");
+                    String       inputLine;
+                    StringBuffer response = new StringBuffer();
+                    BufferedReader in = new BufferedReader(new InputStreamReader(session.getInputStream()));
 
-            cnx       = DriverManager.getConnection(url, username, password);
-            statement = cnx.createStatement();
+                    while ((inputLine = in.readLine()) != null) {
+                        response.append(inputLine).append("\n");
+                    }
+                    in.close();
 
-            // Get all the things from the DB
-            ResultSet allTheThings = statement.executeQuery("SELECT * FROM things;");
-            System.out.println(allTheThings);
+                    // Format response to human-readable JSON
+                    Gson        gson  = new  GsonBuilder().setPrettyPrinting().create();
+                    JsonParser  json  = new  JsonParser();
+                    // Print response in JSON, if possible, otherwise print it in plaintext..
+                    try {
+                        JsonElement elem         = json.parse(response.toString());
+                        String formattedResponse = gson.toJson(elem);
+                        System.out.println("res: "+formattedResponse);
+
+                        return response.toString();
+                    } catch (Exception e) {
+
+                        return response.toString();
+                    }
+
+                default:
+                    break;
+            }
+        } catch (Exception e) {
+            throw e;
         }
-        catch (ClassNotFoundException e) {
-            // Could not find the database driver
-            System.out.println("Database driver not found.");
-        }
-        catch (SQLException e) {
-            // Could not connect to the database
-            System.out.println("Could not connect to the database with information provided.");
-        }
+
+        // If API responds with an unhandled response code.
+        return session.getResponseMessage();
+    }
 
 
+    private void GetDirectoryMap() throws Exception {
 
+        System.out.println("Retrieving directory map...");
 
+        String filePath     = "/";
+        String filename     = ".directorymap";
+        String downloadPath = "https://raw.githubusercontent.com/"+this.username+"/"+this.targetRepository+"/master"+filePath+filename;
+        String directoryMap = this.startSession("GET", downloadPath);
 
-        // Establish Github Connection
-        String username     = "jsrj";
-        String filename     = "/dl1-c/dl2-c1/testfile7.txt";
-        String reponame     = "test-repo";
-
-        String downloadPath = "https://raw.githubusercontent.com/"+username+"/"+reponame+"/master"+filename;
-        String repoContents = "https://api.github.com/repos/"     +username+"/"+reponame+"/contents";
-        String uri          = downloadPath;
-
-        URL obj = new URL(uri);
-        HttpsURLConnection con = (HttpsURLConnection) obj.openConnection();
-
-        con.setRequestMethod("GET");
-
-        con.setRequestProperty("User-Agent"    , "GH-Extractor/1.0");
-        con.setRequestProperty("Accept"        , "application/vnd.github.v3+json");
-        con.setRequestProperty("Username"      ,  username);
-        con.setRequestProperty("Authorization" , "f8f36786490e94b6ba7d9398ebec8d6cd1929f07");
-
-        int responseCode = con.getResponseCode();
-        System.out.println("\nQuerying for: "+(
-
-                (uri == downloadPath) ?
-                        (filename+"\nfrom repository: "+reponame+"\n") : (reponame+" contents.")
-        ));
-        System.out.println("Server Code : " + responseCode);
-
-        switch (responseCode) {
-
-            case 404:
-                System.out.println("Error: "+uri+" Not Found. Check route path.\n");
-                break;
-
-            case 401:
-                System.out.println("Error: Unauthorized. Bad credentials.\n");
-                break;
-
-            default:
-                System.out.println("OK.\n");
-
-                String       inputLine;
-                StringBuffer response = new StringBuffer();
-
-                BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-                while ((inputLine = in.readLine()) != null) {
-                    response.append(inputLine).append("\n");
-                }
-                in.close();
-
-                // Format response to human-readable JSON
-                Gson        gson  = new  GsonBuilder().setPrettyPrinting().create();
-                JsonParser  json  = new  JsonParser();
-
-                // Print response in JSON, if possible, otherwise print it in plaintext..
-                System.out.println("Response: \n");
-                try {
-
-                    JsonElement elem  = json.parse(response.toString());
-                    String formattedResponse = gson.toJson(elem);
-                    System.out.println("res: "+formattedResponse);
-                } catch (Exception e) {
-
-                    System.out.println(response);
+        if (directoryMap.toUpperCase().contains("NOT FOUND")) {
+            System.out.println("Error: Repository does not have a "+filename+" file.");
+        } else {
+            // Do the things with the directory map...
+            for (String map: directoryMap.split("\n")) {
+                if (!map.startsWith("#")) {
+                    System.out.println(map);
+                    String[] mapRoute = map.split(" => ");
+                    this.DirectoryMap.add(mapRoute);
+                    System.out.println(mapRoute);
                 }
 
-                break;
+            }
+            for (String[] item: this.DirectoryMap) {
+                System.out.println(item.toString());
+            }
+            //this.directoryMap = thing;
         }
+    }
 
+    // Read a specific file from within a repository.
+    private void GetFileData() throws Exception {
 
+        String filePath     = "/";
+        String filename     = ".directorymap";
+        String downloadPath = "https://raw.githubusercontent.com/"+this.username+"/"+this.targetRepository+"/master"+filePath+filename;
 
+        System.out.println(this.startSession("GET", downloadPath));
     }
 }
