@@ -20,8 +20,12 @@ public class dbConnect {
             System.out.println(url);
 
             Class.forName(dbDriver);
+            OracleDriver ora = new OracleDriver();
 
-            connection = DriverManager.getConnection(url, username, password);
+            Connection connection = DriverManager.getConnection(url, username, password);
+
+            ora.acceptsURL(url);
+            //ora.getClass(connection);
             statement  = connection.createStatement();
 
             // Get all the things from the DB
