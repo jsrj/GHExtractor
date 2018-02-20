@@ -36,10 +36,10 @@ public class GHExtractor {
 
         // Establishes connection to Github with specified repo/directory and credentials.
         GHExtractor extractor = new GHExtractor(
-                 "test-repo",
+                 "GHExtractor",
                 "jsrj",
                  "f8f36786490e94b6ba7d9398ebec8d6cd1929f07",
-                "testfile7.txt" // <-- change to an actual .sql or .ddl in the test-directory.
+                "demo.ddl"
         );
 
 
@@ -86,11 +86,10 @@ public class GHExtractor {
                     JsonParser  json  = new  JsonParser();
                     // Print response in JSON, if possible, otherwise print it in plaintext..
                     try {
-                        JsonElement elem         = json.parse(response.toString());
-                        String formattedResponse = gson.toJson(elem);
-                        System.out.println("res: "+formattedResponse);
 
-                        return formattedResponse;
+                        JsonElement elem         = json.parse(response.toString());
+                        return gson.toJson(elem);
+
                     } catch (Exception e) {
 
                         return response.toString();
@@ -143,14 +142,17 @@ public class GHExtractor {
             // Simply outputs dialogue of all files and routes found in directory map.
             int i = 0;
             for (String[] item: this.DirectoryMap) {
-                System.out.println("DirectoryMap["+this.DirectoryMap.indexOf(item)+"]...");
-                for (String unit: item) {
-                    String whatIs = (i == 0)? "Filename: " : "Location: ";
-                    System.out.println(whatIs+unit);
-                    i++;
+                if (!(item.length <= 1)) {
+                    System.out.println("empty entry");
+                    System.out.println("DirectoryMap["+this.DirectoryMap.indexOf(item)+"]...");
+                    for (String unit: item) {
+                        String whatIs = (i == 0)? "Filename: " : "Location: ";
+                        System.out.println(whatIs+unit);
+                        i++;
+                    }
+                    System.out.println("\n");
+                    i = 0;
                 }
-                System.out.println("\n");
-                i = 0;
             }
         }
     }
@@ -170,20 +172,27 @@ public class GHExtractor {
         this.GetDirectoryMap();
 
         // Step 2: Search for {tableName} script raw data from Github using directory map.
-        System.out.println("Searching for '"+tableName+"'...");
-        for (String[] filePath: this.DirectoryMap) {
-            String filename = filePath[0];
-            String location = filePath[1];
-            if (filename.contains(tableName)) {
+        System.out.println("Searching for '"+tableName+"' in directory map");
+
+            for (String[] filePath: this.DirectoryMap) {
+                // Checks for empty, malformed, or non-existent .directorymap
+                if (filePath.length <= 1) {
+                    System.out.println("Warning: .directorymap not in repository, or does not contain any data. ");
+                } else {
+                    String filename = filePath[0];
+                    String location = filePath[1];
 
         // Step 3: Parse raw data from {tableName} file.
-                System.out.println("Found!");
+                    if (!(filename == null) && filename.contains(tableName)) {
+                        System.out.println("Found!");
 
-                System.out.println("\n-- START OF FILE --\n");
-                System.out.println(this.GetFileData(location, filename));
-                System.out.println("-- END OF FILE --");
+                        System.out.println("\n-- START OF FILE --\n"           );
+                        System.out.println(this.GetFileData(location, filename));
+                        System.out.println("-- END OF FILE --"                 );
+                    }
+                }
             }
-        }
+
 
         // Step 4: Save raw data as a file to provided directory.
         // Note:   Filename will match what is on github.
