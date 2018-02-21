@@ -39,9 +39,9 @@ GitHub username; specifically the username the repository is published under.
 >3. `authT (String)`: 
 Authentication token to access the repository, if any is required. Otherwise, use an empty string {""}. 
 
-<strong>Once instantiated, files can be downloaded by calling the `GetFileFromGithub()` method with the following 2 parameters:</strong>
-
 ---
+
+<strong>Once instantiated, files can be downloaded by calling the `GetFileFromGithub()` method with the following 2 parameters:</strong>
 
 >1. `fileName (String)`:  
 The specific filename, including extension, to search the repository for and download. If {"*"} is used here, GHExtractor will download everything listed within the .directorymap file.
