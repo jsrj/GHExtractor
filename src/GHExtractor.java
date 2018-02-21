@@ -6,11 +6,13 @@ import com.google.gson.JsonParser;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+
 import java.net.URL;
+import javax.net.ssl.HttpsURLConnection;
+
 import java.util.ArrayList;
 import java.util.List;
-import javax.net.ssl.HttpsURLConnection;
-//import javax.xml.ws.http.HTTPException;
+
 
 public class GHExtractor {
 
@@ -27,26 +29,6 @@ public class GHExtractor {
         this.targetRepository = tRepo;
     }
 
-    // Only runs when testing within the GHExtractor class itself.
-    public static void main(String[] args) {
-        // Test connection to DB to pull tables for comparison.
-        dbConnect db = new dbConnect();
-        db.Connect();
-
-        // Establishes connection to Github with specified repo/directory and credentials.
-        GHExtractor extractor = new GHExtractor(
-                 "GHExtractor",
-                "jsrj",
-                 "f8f36786490e94b6ba7d9398ebec8d6cd1929f07"
-        );
-
-
-        try {
-            extractor.GetTableFromGithub("demo.sql","files-from-github");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
     // Initiates HTTP session with Github API
     private String startSession(String Mode, String URI) throws Exception {
 
@@ -154,18 +136,8 @@ public class GHExtractor {
         }
     }
 
-    private void GetAllFromGithub(String outDirectory) throws Exception {
-        // Similar to GetTableFromGithub except that this will pull data for every single file.
-        // This should be called when a user of the parent app does not select a specific table.
-        this.GetDirectoryMap();
 
-        for (String[] entry: this.DirectoryMap) {
-            System.out.println("Downloading "+entry[0]+" to "+outDirectory+"...");
-            this.GetTableFromGithub(entry[0], outDirectory);
-        }
-    }
-
-    private void GetTableFromGithub(String tableName, String outDirectory) throws Exception {
+    public void GetFileFromGithub(String tableName, String outDirectory) throws Exception {
 
         // Step 0: if user of parent app specifies a table, then use that table name, otherwise use "*" to denote all tables.
         System.out.println(
@@ -211,6 +183,7 @@ public class GHExtractor {
                     }
                 }
             }
+
             // Only gets output if the above conditions are not met.
         if (!found) {
             System.out.println("Sorry: "+tableName+" was not found. Either it is not located in the repository, or was not listed in the directory map. No file downloaded.");
