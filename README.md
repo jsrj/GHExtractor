@@ -12,16 +12,21 @@
 >`src` - contains the `GHExtractor.java` class as well as a `Tests.java` 	class for running tests within the repository itself.
 
 <strong>Note 2:</strong> 
-<i>As this tool is used to read and download raw content from files on github, an internet connection is required to run it without any errors. 
+<i>
+	As this tool is used to read and download raw content from files on 	github, an internet connection is required to run it without any errors. 
 </i>
 
 <strong>Note 3:</strong> 
-<i>In it's current form, this tool <u>cannot</u> read files who's raw data exists in binary form as it is primarily used to read `*.ddl`, `*.sql`, `*.js`, `*.sh` or `*.py` scripts currently.</i>
+<i>
+	In it's current form, this tool <u>cannot</u> read files who's raw data 	exists in binary form as it is primarily used to read `*.ddl`, `*.sql`, 	`*.js`, `*.sh` or `*.py` scripts currently.
+</i>
 
 <strong> Note 4:</strong>
-<i> Currently, in order to properly query for and extract files by filename only, a `.directorymap` is required to be placed within the directory root of a given repository. This requirement should be resolved soon as it is a pretty cumbersome solution. 
+<i> 
+	Currently, in order to properly query for and extract files by filename 	only, a `.directorymap` is required to be placed within the directory 	root of a given repository. This requirement should be resolved soon as 	it is a pretty cumbersome solution.
+</i> 
 
---
+---
 
 <strong>The `GHExtractor` class can be instantiated using the following 3 parameters:</strong>
 <p />
