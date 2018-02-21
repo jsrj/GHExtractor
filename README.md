@@ -29,35 +29,30 @@
 ---
 
 <strong>The `GHExtractor` class can be instantiated using the following 3 parameters:</strong>
-<p />
 
-	1. tRepo (String): 
-	------------------
-	Target repository name to pull file(s) from.
-___
-	2. uName (String): 
-	------------------ 
-	GitHub username; specifically the username the repository is published under.
-___
-	3. authT (String): 
-	------------------ 
-	Authentication token to access the repository, if any is required. Otherwise, use an empty string {""}. 
---
-<p />
-<strong>
-Once instantiated, files can be downloaded by calling the `GetFileFromGithub()` method with the following 2 parameters:
-</strong>
---
-	1. fileName (String): 
-	--------------------- 
-	The specific filename, including extension, to search the repository for and download. If {"*"} is used here, GHExtractor will download everything listed within the .directorymap file.
-___
-	2. outDirectory (String): 
-	------------------------- 
-	The target directory to download the file to, from the reference-point of the project root directory. If left as an empty string, or if the provided directory doesn't exist, this will download to the root of the project using GHExtractor instead.
---
+>1. `tRepo (String)`:
+Target repository name to pull file(s) from.
+
+>2. `uName (String)`:
+GitHub username; specifically the username the repository is published under.
+	
+>3. `authT (String)`: 
+Authentication token to access the repository, if any is required. Otherwise, use an empty string {""}. 
+
+<strong>Once instantiated, files can be downloaded by calling the `GetFileFromGithub()` method with the following 2 parameters:</strong>
+
+---
+
+>1. `fileName (String)`:  
+The specific filename, including extension, to search the repository for and download. If {"*"} is used here, GHExtractor will download everything listed within the .directorymap file.
+	
+>2. `outDirectory (String)`:  
+The target directory to download the file to, from the reference-point of the project root directory. If left as an empty string, or if the provided directory doesn't exist, this will download to the root of the project using GHExtractor instead.
+
+---
+
 ### Usage Example:
---
+
 ```java
 public static void main(String[] args) {
 	
@@ -70,8 +65,11 @@ public static void main(String[] args) {
 	}        
 }
 ```
---
+
+---
+
 ### .directorymap template:
+
 ```text
 # ...Structure...
 # ..."#"      = Comment line.
