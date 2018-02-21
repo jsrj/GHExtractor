@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
@@ -25,7 +26,7 @@ public class GHExtractor {
     // Initializer
     public GHExtractor(String tRepo, String uName, String authT) {
         this.username         = uName;
-        this.authToken        = authT;
+        this.authToken        = (authT == null)? authT : "";
         this.targetRepository = tRepo;
     }
 
@@ -137,7 +138,7 @@ public class GHExtractor {
     }
 
 
-    public void GetFileFromGithub(String tableName, String outDirectory) throws Exception {
+    public void GetFileFromGithub(String fileName, String outDirectory) throws Exception {
 
         // Step 0: if user of parent app specifies a table, then use that table name, otherwise use "*" to denote all tables.
         System.out.println(
@@ -146,47 +147,62 @@ public class GHExtractor {
                 " ----------------------- \n"
         );
         // Step 1: Retrieve directory map for repository provided at instantiation of app.
-        System.out.println("Searching for '"+((tableName != "*")? tableName : "ALL TABLES")+"' in directory map");
+        System.out.println("Searching for '"+((fileName != "*")? fileName : "ALL TABLES")+"' in directory map");
         this.GetDirectoryMap();
 
             // Step 2: Search for {tableName or all tables} script raw data from Github using directory map.
             boolean found = false;
-            for (String[] filePath: this.DirectoryMap) {
                 // Checks for empty, malformed, or non-existent directory map
-                if (filePath.length <= 1) {
+            if (this.DirectoryMap.size() <= 1) {
                     System.out.println("Warning: either the directory map file is not located in the repository root, or does not exist.");
+            }
+            else {
+            for (String[] filePath: this.DirectoryMap) {
 
-                } else {
-
+                if ((filePath.length < 2) && (filePath.length > 0)) {
+                    System.out.println("Warning: No file location provided for '"+filePath[0]+"'. Skipping...\n");
+                    continue;
+                }
                     String filename = filePath[0];
                     String location = filePath[1];
 
                     // Step 3: Parse raw data from {tableName} file.
-                    if ( !(filename == null) && (tableName.contains("*") || filename.contains(tableName)) ) {
+                    if ( !(filename == null) && (fileName.contains("*") || filename.contains(fileName)) ) {
                         System.out.println("Downloading "+filename+" to "+outDirectory+"...");
+
                         String rawData = this.GetFileData(location, filename);
+                        if(!(rawData.contains("Not Found") || rawData.contains("Bad Request"))) {
 
-                        //System.out.println("\n-- START OF FILE FROM GH --"     );
-                        //System.out.println(rawData                             );
-                        //System.out.println("-- EOF --"                         );
-                        //System.out.println("Saving "+filename+" to "+outDirectory+"...");
+                            // Step 4: Save raw data as a file to provided directory.
+                            // Note:   Filename will match what is on github.
+                            try {
+                                PrintWriter writer = new PrintWriter("./"+outDirectory+"/"+filename, "UTF-8");
+                                writer.print(rawData);
+                                writer.close();
+                                System.out.println(filename+" downloaded.\n");
+                                found = true;
+                            }
+                            catch(FileNotFoundException e) {
+                                System.out.println("The provided directory does not exist. Defaulting to current directory.");
 
-                        // Step 4: Save raw data as a file to provided directory.
-                        // Note:   Filename will match what is on github.
-                        PrintWriter writer = new PrintWriter("./"+outDirectory+"/"+filename, "UTF-8");
-                        for (String line: rawData.split("\n")) {
+                                PrintWriter writer = new PrintWriter(filename, "UTF-8");
+                                writer.print(rawData);
+                                writer.close();
+                                System.out.println(filename+" downloaded.\n");
+                                found = true;
+                            }
 
-                            writer.println(line);
-                            found = true;
+
+                        } else {
+                            System.out.println("Error downloading "+filename+".\n");
                         }
-                    writer.close();
                     }
                 }
             }
 
             // Only gets output if the above conditions are not met.
         if (!found) {
-            System.out.println("Sorry: "+tableName+" was not found. Either it is not located in the repository, or was not listed in the directory map. No file downloaded.");
+            System.out.println("Sorry: "+fileName+" was not found. Either it is not located in the repository, or was not listed in the directory map. No file downloaded.");
         }
     }
 }

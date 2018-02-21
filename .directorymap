@@ -4,8 +4,7 @@
 # "=>"       = Symbol that associates a file to a route.
 # "Route"    = The associated path within a repo directory to a specific file.
 #
-# e.g.   testfile7.txt => /dl1-c/dl2-c1/
-#        [ FILENAME  ] => /[  ROUTE   ]/
+# E.G.       [ FILENAME  ] => /[  ROUTE   ]/
 
 demo.ddl => /test-directory/
 demo.sql => /test-directory/

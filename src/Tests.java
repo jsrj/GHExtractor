@@ -6,7 +6,7 @@ public class Tests {
                 GHExtractor extractor = new GHExtractor(
                         "test-repo",
                         "jsrj",
-                        "f8f36786490e94b6ba7d9398ebec8d6cd1929f07"
+                        ""
                 );
                 extractor.GetFileFromGithub("","");
 
@@ -25,9 +25,9 @@ public class Tests {
                 GHExtractor extractor = new GHExtractor(
                         "test-repo",
                         "jsrj",
-                        "f8f36786490e94b6ba7d9398ebec8d6cd1929f07"
+                        ""
                 );
-                extractor.GetFileFromGithub("","");
+                extractor.GetFileFromGithub("*","files-from-github/subdirectory");
 
             }
             catch (Exception e) {
@@ -44,7 +44,7 @@ public class Tests {
                 GHExtractor extractor = new GHExtractor(
                         "test-repo",
                         "jsrj",
-                        "f8f36786490e94b6ba7d9398ebec8d6cd1929f07"
+                        ""
                 );
                 extractor.GetFileFromGithub("","");
 
@@ -63,7 +63,7 @@ public class Tests {
                 GHExtractor extractor = new GHExtractor(
                         "test-repo",
                         "jsrj",
-                        "f8f36786490e94b6ba7d9398ebec8d6cd1929f07"
+                        ""
                 );
                 extractor.GetFileFromGithub("","");
 
@@ -76,14 +76,14 @@ public class Tests {
         }
 
 
-    public static void RunTests() {
+    public static void main(String[] args) {
         // TODO: Change GHExtractor.java so that it does not need to rely on a .directorymap
         // TODO: Add outputs and assertions to test cases.
 
-        GetOneFileFromDemoDirectory();
+        //GetOneFileFromDemoDirectory();
         GetAllFilesFromTestRepo();
-        GetNonexistentFileFromDemoDirectory();
-        PlaceFilesIntoSubdirectory();
+        //GetNonexistentFileFromDemoDirectory();
+        //PlaceFilesIntoSubdirectory();
 
     }
 }
