@@ -1,18 +1,19 @@
 # GH Extractor
 ---
 
-###<u>How to use</u>:
-<p />
+<h3><u>How to use</u>:</h3>
 
 <strong>Note 1:</strong>
-<i>The primary files needed in this repository are contained within the `lib/` and `src/` directories.</i>
-<p /> 
-* `lib` - contains the ```gson``` which is used to pretty-JSONify the responses from GitHub's API, as well as the Oracle SQL driver if interaction with a database is needed. 
-<p />
-* `src` - contains the `GHExtractor.java` class as well as a `Tests.java` class for running tests within the repository itself.
-<p />
+<i>
+	The primary files needed in this repository are contained within the `	lib/` and `src/` directories.
+</i>
+>`lib` - contains the ```gson``` which is used to pretty-JSONify the 	responses from GitHub's API, as well as the Oracle SQL driver if 	interaction with a database is needed. 
+
+>`src` - contains the `GHExtractor.java` class as well as a `Tests.java` 	class for running tests within the repository itself.
+
 <strong>Note 2:</strong> 
-<i>As this tool is used to read and download raw content from files on github, an internet connection is required to run it without any errors. </i>
+<i>As this tool is used to read and download raw content from files on github, an internet connection is required to run it without any errors. 
+</i>
 
 <strong>Note 3:</strong> 
 <i>In it's current form, this tool <u>cannot</u> read files who's raw data exists in binary form as it is primarily used to read `*.ddl`, `*.sql`, `*.js`, `*.sh` or `*.py` scripts currently.</i>
