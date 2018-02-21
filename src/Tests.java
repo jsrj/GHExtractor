@@ -27,7 +27,7 @@ public class Tests {
                         "jsrj",
                         ""
                 );
-                extractor.GetFileFromGithub("*","files-from-github/subdirectory");
+                extractor.GetFileFromGithub("testfile7.txt","files-from-github");
 
             }
             catch (Exception e) {
