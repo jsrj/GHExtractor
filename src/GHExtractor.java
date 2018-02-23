@@ -21,6 +21,8 @@ public class GHExtractor {
     private String         authToken; //<-- probably not a good idea to have published on github, but since its just a dummy repository, its whatever.
     private String         targetRepository;
     private List<String[]> DirectoryMap = new ArrayList<>();
+    private List<String>   repos        = new ArrayList<>();
+    private boolean        verbose      = true;
 
     // Initializer
     public GHExtractor(String tRepo, String uName, String authT) {
@@ -138,38 +140,47 @@ public class GHExtractor {
 
     /* TODO: Replace GetDirectoryMap() with a method that... */
 
-    public void GetReposForUser(int iteration) throws Exception { // TODO: 1) Gets repos by username
+    private void GetReposForUser(int iteration) throws Exception { // TODO: 1) ...Gets repos by username
 
-        // GET: https://api.github.com/users/:username/repos - pulls info on all repos for a specified user
-        int    page        = 1+iteration;
         String resultsPer  = "100";
+        int    page        = 1+iteration;
         try {
+            // Provides console output in verbose mode to let user know that this is doing something.
             if (page == 1) {
-                System.out.println("Retrieving repository list for "+this.username+"...");
+                System.out.println(((verbose)? "Retrieving repository list for "+this.username+"..." : ""));
             }
-            String repoList = this.startSession(
+
+            // GET: https://api.github.com/users/{username}/repos?page={page}&per_page={resultsPer}
+            //    - pulls info on all repos for a specified user
+            String apiRes = this.startSession(
                     "GET",
                     "https://api.github.com/users/"+this.username+"/repos?"
                         +"page="+page
                         +"&per_page="+resultsPer
             );
-            JsonParser resConverter = new JsonParser();
-            JsonArray repoArray = (JsonArray) resConverter.parse(repoList);
 
+            // Convert the GSON from API response to a JsonArray
+            JsonArray repoArray = (JsonArray) new JsonParser().parse(apiRes);
+
+            // TODO: Propose standardizing directory structure naming to lowercase-pipe-case
+            // Parses results for repository names and stores them in the "repos" list
             int results = 0;
             for (JsonElement repo: repoArray) {
-                // Propose standardizing directory structure naming to lowercase-pipe-case
-                String repoName = repo.getAsJsonObject().get("name").toString().toLowerCase();
 
-                System.out.println("GET "+(((iteration > 0)? results+100 : results)+1)+": "+repoName);
+                String repoName = repo.getAsJsonObject().get("name").toString();
+
+                System.out.println(((verbose)? "GET "+(((iteration > 0)? results+100 : results)+1)+": "+repoName : ""));
+                this.repos.add(repoName);
                 results++;
             }
 
             // Since the API has a results limit of 100, this will use the pagination feature to recursively call itself for a full list.
             if (results > 0) {
-                this.GetReposForUser(1+iteration);
+                // Recursive call to retrieve next page of repo list until no pages are left.
+                this.GetReposForUser(++iteration);
             } else {
-                System.out.println("Repository Count: "+ ((results == 0 && page > 1)? 100+page+1 : results));
+                System.out.println(((verbose)? "Repository Count: "+ ((results == 0 && page > 1)? 100+page+1 : results) : ""));
+                // Any follow up logic to execute once repo search has completed...
             }
         }
         // TODO: Remove this once handlers are implemented for Rate Limit being exceeded, or 404/500 errors.
@@ -177,10 +188,23 @@ public class GHExtractor {
         catch (Exception e) {
             System.out.println("Oh no!");
         }
-
+        System.out.println("Repos size: "+repos.size());
+        //return this.repos;
     }
-    private void FindSpecificRepo() throws Exception {// TODO: 2) Get repo that matches a certain description
 
+    public void FindSpecificRepo(String repoName) throws Exception {// TODO: 2) Get repo that matches a certain description
+
+        // Populates Repository list
+        this.GetReposForUser(0);
+
+        for (String repo: this.repos) {
+            System.out.println(repo);
+            if (repo.contains(repoName)) {
+
+                System.out.println("Found! Do this...");
+                return;
+            }
+        }
     }
     private void GetFilenamesFromRepo() throws Exception { // TODO: 3) Get repo filenames
 

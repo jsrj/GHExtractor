@@ -28,7 +28,7 @@ public class Tests {
                         ""
                 );
                 //extractor.GetFileFromGithub("testfile7.txt","files-from-github");
-                extractor.GetReposForUser(0);
+                extractor.FindSpecificRepo("test-repo");
             }
             catch (Exception e) {
 
