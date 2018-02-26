@@ -23,12 +23,13 @@ public class Tests {
         public static void GetAllFilesFromTestRepo(){
             try {
                 GHExtractor extractor = new GHExtractor(
-                        "test-repo",
+                        "*",
                         "jsrj",
-                        ""
+                        "b38e94381f493921e53bf7a523865ae6a4d94e54"
                 );
                 //extractor.GetFileFromGithub("testfile7.txt","files-from-github");
-                extractor.FindSpecificRepo("test-repo");
+                //extractor.FindSpecificRepo("test-repo");
+                extractor.GetFilenamesFromRepo("test-repo", "");
             }
             catch (Exception e) {
 
