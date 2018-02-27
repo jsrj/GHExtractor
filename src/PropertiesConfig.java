@@ -56,6 +56,7 @@ public class PropertiesConfig {
             System.out.println("'"+key+"' property set.");
             System.setProperty(key, val);
         }
+        System.out.println("\n\n");
     }
 
     // This method reads from a .env file.
@@ -77,14 +78,15 @@ public class PropertiesConfig {
         }
 
         List<String[]> envVars = new ArrayList<>();
-
+        System.out.println("------------------------------------");
+        System.out.println("| Setting Environment Variables... |");
+        System.out.println("------------------------------------");
         for (String var: output.split("\n")) {
             envVars.add(var.split("="));
         }
         for (String[] keyAndValue: envVars) {
 
             this.addProperty(new Property(keyAndValue[0], keyAndValue[1]));
-            System.out.println("'"+keyAndValue[0]+"' property added.");
         }
     }
 }

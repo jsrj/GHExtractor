@@ -283,10 +283,10 @@ public class GHExtractor
 
             subdirectory     = (subdirectory.matches(""))? subdirectory : subdirectory+"/";
             System.out.println("subdirectory: "+subdirectory);
-            String fullRoute = (recursiveCall)? this.contentsURL+subdirectory.replaceAll("\"", "") : this.contentsURL;
-            System.out.println("fullRoute: "+fullRoute);
+            //String fullRoute = (recursiveCall)? this.contentsURL+subdirectory.replaceAll("\"", "") : this.contentsURL;
+            //System.out.println("fullRoute: "+fullRoute);
             JsonArray repoContents = parser.parse
-                    (this.startSession("GET", fullRoute)
+                    (this.startSession("GET", this.contentsURL)
                     ).getAsJsonArray();
 
                 for (JsonElement content: repoContents) {
@@ -380,15 +380,14 @@ public class GHExtractor
                             try {
                                 System.out.println("File Path: "+file.getPath());
                                 // Create a parent directory based on repo/db name inside of target output directory
-                                String parentDirectory = "./"+outDirectory+"/"+this.targetRepository+"/";
+                                String parentDirectory = outDirectory+"/"+file.getPath().replaceAll(file.getName(), "");
                                 File newFile = new File(parentDirectory);
-                                newFile.mkdir();
+                                newFile.mkdirs();
 
                                 PrintWriter writer = new PrintWriter(parentDirectory+file.getName().replaceAll("\"", ""), "UTF-8");
                                 writer.print(rawData);
                                 writer.close();
                                 System.out.println(file.getName()+" downloaded.\n");
-                                //found = true;
                             }
                             catch(FileNotFoundException e) {
                                 System.out.println("The provided directory does not exist. Defaulting to current directory.");
@@ -397,7 +396,6 @@ public class GHExtractor
                                 writer.print(rawData);
                                 writer.close();
                                 System.out.println(file.getName()+" downloaded.\n");
-                                //found = true;
                             }
 
 
@@ -407,10 +405,5 @@ public class GHExtractor
                     }
                 }
             }
-
-            // Only gets output if the above conditions are not met.
-//        if (!found) {
-//            System.out.println("Sorry: "++" was not found. Either it is not located in the repository, or an unknown communications error occured. No file downloaded.");
-//        }
     }
 }
