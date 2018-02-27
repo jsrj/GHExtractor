@@ -1,54 +1,17 @@
+import java.io.File;
+import java.io.IOException;
+
 public class Tests {
 
-        // Test Case #1:
-        public static void GetOneFileFromDemoDirectory(){
-            try {
-                GHExtractor extractor = new GHExtractor(
-                        "test-repo",
-                        "jsrj",
-                        ""
-                );
-                extractor.GetFileFromGithub("","");
-
-            }
-            catch (Exception e) {
-
-                e.printStackTrace();
-
-            }
-        }
-
-
-        // Test Case #2:
         public static void GetAllFilesFromTestRepo(){
             try {
                 GHExtractor extractor = new GHExtractor(
-                        "*",
-                        "jsrj",
-                        "b38e94381f493921e53bf7a523865ae6a4d94e54"
-                );
-                //extractor.GetFileFromGithub("testfile7.txt","files-from-github");
-                //extractor.FindSpecificRepo("test-repo");
-                extractor.GetFilenamesFromRepo("test-repo", "");
-            }
-            catch (Exception e) {
-
-                e.printStackTrace();
-
-            }
-        }
-
-
-        // Test Case #3:
-        public static void GetNonexistentFileFromDemoDirectory(){
-            try {
-                GHExtractor extractor = new GHExtractor(
                         "test-repo",
                         "jsrj",
-                        ""
+                        "44649e73f09ea701189441dd093c711d1f25975a"
                 );
-                extractor.GetFileFromGithub("","");
-
+                extractor.toggleVerbose();
+                extractor.GetFileFromGithub("*", "files-from-github");
             }
             catch (Exception e) {
 
@@ -56,35 +19,26 @@ public class Tests {
 
             }
         }
-
-
-        // Test Case #4:
-        public static void PlaceFilesIntoSubdirectory(){
-            try {
-                GHExtractor extractor = new GHExtractor(
-                        "test-repo",
-                        "jsrj",
-                        ""
-                );
-                extractor.GetFileFromGithub("","");
-
-            }
-            catch (Exception e) {
-
-                e.printStackTrace();
-
-            }
-        }
-
 
     public static void main(String[] args) {
-        // TODO: Change GHExtractor.java so that it does not need to rely on a .directorymap
         // TODO: Add outputs and assertions to test cases.
 
-        //GetOneFileFromDemoDirectory();
+//        File testFile = new File("files-from-github/adirectory/test.txt");
+//
+//        System.out.println(testFile.getParentFile().mkdir());
+//        try {
+//            testFile.createNewFile();
+//        }
+//        catch (Exception e) {
+//            System.out.println("Failed to create new directory or file.");
+//        }
+//        try {
+//            testFile.createNewFile();
+//        }
+//        catch (Exception e) {
+//            System.out.println("Failed to create new directory");
+//        }
         GetAllFilesFromTestRepo();
-        //GetNonexistentFileFromDemoDirectory();
-        //PlaceFilesIntoSubdirectory();
 
     }
 }

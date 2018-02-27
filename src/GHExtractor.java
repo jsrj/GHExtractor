@@ -1,53 +1,110 @@
 import com.google.gson.*;
-import com.google.gson.stream.JsonReader;
-
 import java.io.*;
-
-import java.lang.reflect.Array;
-import java.net.URI;
 import java.net.URL;
 import javax.net.ssl.HttpsURLConnection;
-import javax.print.attribute.URISyntax;
-import javax.xml.transform.URIResolver;
-
-import java.util.ArrayList;
-import java.util.List;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 
-public class GHExtractor {
+public class GHExtractor
+{
 
     // Props - hardcoded for now. Should be set upon app initialization.
+    private List<ContentDetails> filePaths = new ArrayList<>();
+
     private String         username;
     private String         authToken;
     private String         targetRepository;
-    private List<String[]> DirectoryMap = new ArrayList<>();
+    //private List<String[]> DirectoryMap = new ArrayList<>();
     private List<String>   repos        = new ArrayList<>();
     private String         errMsg       = "None";
-    private boolean        verbose      = true;
+    private boolean        verbose      = false;
+
+    private String scheduledHTTPMode;
+    private String getScheduledURI;
+
+    private String contentsURL;
+
+    // For changing target repo
+    public void setTargetRepository(String targetRepository) {
+        this.targetRepository = targetRepository;
+    }
+
+    // For toggling console output on and off
+    public void toggleVerbose() {
+        this.verbose = !this.verbose;
+    }
 
     // Initializer
     public GHExtractor(String tRepo, String uName, String authT) {
         this.username         = uName;
         this.authToken        = (authT == null)? authT : "";
-        this.targetRepository = tRepo;
+        this.setTargetRepository(tRepo);
+
+        if(this.verbose) {
+            // Ensures that verbose mode is defaulted to off.
+            this.toggleVerbose();
+        }
     }
+
 
     // Initiates HTTP session with Github API
     private String startSession(String Mode, String URI) throws Exception {
 
         System.out.println("Establishing connection to "+URI);
 
-        HttpsURLConnection session = (HttpsURLConnection) new URL(URI).openConnection(  );
+        HttpsURLConnection session = (HttpsURLConnection) new URL(URI).openConnection();
+
         session.setRequestMethod     (Mode                                              );
-        session.setRequestProperty   ("User-Agent"    , "GH-Extractor/1.0"              ); // Required Always.
-        session.setRequestProperty   ("Accept"        , "application/vnd.github.v3+json"); // Required Always.
+        session.setRequestProperty   ("User-Agent"    , "GHExtractor"                   );
+        session.setRequestProperty   ("Accept"        , "application/vnd.github.v3+json," +
+                                                        "text/html,"                      +
+                                                        "application/xhtml+xml,"          +
+                                                        "image/jxr,"                      +
+                                                        "*/*"                           );
         session.setRequestProperty   ("Username"      ,  this.username                  );
         session.setRequestProperty   ("Authorization" ,  this.authToken                 );
 
+        // Handler for Rate-Limits
+        String remaining = session.getHeaderField("X-RateLimit-Remaining");
+        String resetTime = session.getHeaderField("X-RateLimit-Reset");
+
+        int queriesRemaining = (remaining != null)? Integer.decode(remaining) : 999;
+        long limitReset      = (resetTime != null)? Long.decode(resetTime)    : 0L;
+        Date date            = new Date();
+        Date reset           = new Date(limitReset * 1000);
+        DateFormat format    = new SimpleDateFormat("KK:mm:ss a");
+
+
+        format.setTimeZone(TimeZone.getDefault());
+        String formattedLocal = format.format(date);
+        String formattedReset = format.format(reset);
+        Long   timeDifference = limitReset-(date.toInstant().getEpochSecond());
+
+        if (queriesRemaining == 0) {
+            // Suspends tool until rate-limit has reset or the process is interrupted.
+            System.out.println("Rate Limit Reached...");
+            System.out.println("Reset Time: "+formattedReset);
+            System.out.println("Local Time: "+formattedLocal);
+            System.out.println("Will retry once rate limit resets...");
+
+            Thread.sleep(timeDifference*1000);
+            System.out.println("Re-attempting connection...");
+
+            // Re-attempts HTTPS Session with the last known URI
+            this.startSession(Mode, URI);
+        }
+        else if (queriesRemaining < 5) {
+            System.out.println("Rate Limit Warning: 5 or less API calls remaining. Once this count hits 0, will wait before continuing");
+        }
+
+
         int responseCode = session.getResponseCode();
-        System.out.println("47: "+responseCode+": "+session.getResponseMessage());
+        System.out.println("74: "+responseCode+": "+session.getResponseMessage());
         try {
             switch (responseCode) {
+
                 // Should be extended to account for all Server codes.
                 case 404:
                     this.errMsg = "Error "+responseCode+": "+URI+" "+session.getResponseMessage()+". Check route path.\n";
@@ -56,7 +113,8 @@ public class GHExtractor {
 
                 case 403:
                     this.errMsg = responseCode+": "+session.getResponseMessage();
-                    System.out.println(errMsg);
+                    System.out.println(errMsg+". Rate-Limit may have been exceeded. Please wait a few minutes before trying again.");
+                    this.kill();
                     break;//return("-1");
 
                 case 401:
@@ -80,19 +138,19 @@ public class GHExtractor {
                     JsonParser  json  = new  JsonParser();
                     // Print response in JSON, if possible, otherwise print it in plaintext..
                     try {
-
                         JsonElement elem = json.parse(response.toString());
                         return gson.toJson(elem);
                     }
-                    catch (Exception e) {
-                        this.errMsg = e.toString();
-                        throw e;
+                    catch (JsonSyntaxException e) {
+                        System.out.println(response.toString());
+                        return response.toString();
+                        //throw e;
                     }
 
                 default:
                     this.errMsg = "Error Encountered";
                     System.out.println(this.errMsg);
-                    break;
+                    return "-1";
             }
         } catch (Exception e) {
             this.errMsg = e.toString();
@@ -100,63 +158,16 @@ public class GHExtractor {
         }
 
         // If API responds with an unhandled response code.
-        return responseCode+": "+session.getResponseMessage();
+        System.out.println("ACK!");
+        this.kill();
+        return new JsonObject().toString();
     }
-
-    // Read a specific file from within a repository.
-    private String GetFileData(String path, String name) throws Exception {
-
-        String downloadPath = "https://raw.githubusercontent.com/"+this.username+"/"+this.targetRepository+"/master"+path+name;
-        return this.startSession("GET", downloadPath);
-    }
-
-    // Reads .directorymap from given repository and parses for locations of files.
-    private void GetDirectoryMap() throws Exception {
-
-        System.out.println("Retrieving directory map...");
-
-        String filePath     = "/";
-        String filename     = ".directorymap";
-        String directoryMap = this.GetFileData(filePath, filename);
-
-        if (directoryMap.toUpperCase().contains("NOT FOUND")) {
-            System.out.println("Error: Repository does not have a "+filename+" file.");
-        } else {
-            // Do the things with the directory map...
-            for (String map: directoryMap.split("\n")) {
-
-                // Ignore lines commented out with '#' or that are empty.
-                if (!(map.startsWith("#")) && (map.length() > 0)) {
-
-                    // Convert each line from .directorymap into a String array of structure [0:{filename}, 1:{location}]
-                    String[] mapRoute = map.split(" => ");
-
-                    // Add the string array to the DirectoryMap list.
-                    this.DirectoryMap.add(mapRoute);
-                }
-            }
-
-            // Simply outputs dialogue of all files and routes found in directory map.
-            int i = 0;
-            for (String[] item: this.DirectoryMap) {
-                if (!(item.length <= 0)) {
-                    System.out.println("Entry #"+(this.DirectoryMap.indexOf(item)+1)+": ");
-                    for (String unit: item) {
-                        String whatIs = (i == 0)? "Filename: " : "Location: ";
-                        System.out.println(whatIs+unit);
-                        i++;
-                    }
-                    System.out.println("\n");
-                    i = 0;
-                }
-            }
-        }
-    }
-
-    /* TODO: Replace GetDirectoryMap() with a method that... */
 
     private void GetReposForUser(int iteration) throws Exception { // TODO: 1) ...Gets repos by username
-
+        if (this.repos.size() > 0 && iteration == 0) {
+            // Prevents from repeatedly querying the API for information that is already present, while not interfering with recursive calls..
+            return;
+        }
         String resultsPer  = "100";
         int    page        = 1+iteration;
         try {
@@ -216,7 +227,7 @@ public class GHExtractor {
         //return this.repos;
     }
 
-    private String FindSpecificRepo(String repoName) throws Exception {// TODO: 2) Get repo that matches a certain description
+    private String FindTargetRepo() throws Exception {
 
         // Populates Repository list
         this.GetReposForUser(0);
@@ -225,58 +236,109 @@ public class GHExtractor {
             System.out.println("Error: Repository list empty.");
             return "";
         }
-        System.out.println("Searching repository list for "+repoName+"...");
-        for (String repo: this.repos) {
-            if (repo.contains(repoName)) {
 
-                System.out.println("\nFound! Scanning "+repoName+"...\n");
+        System.out.println("Searching repository list for "+this.targetRepository+"...");
+        for (String repo: this.repos) {
+            if (repo.contains(this.targetRepository)) {
+
+                System.out.println("\nFound! Scanning "+this.targetRepository+"...\n");
 
                 // Query API for that specific repository information
                 String apiRes = this.startSession(
                         "GET",
-                        "https://api.github.com/repos/"+this.username+"/"+repoName
+                        "https://api.github.com/repos/"+this.username+"/"+this.targetRepository
                 );
 
-                System.out.println(apiRes);
+                //System.out.println(apiRes);
                 return apiRes;
             }
         }
-        return "Could not locate "+repoName+".";
+        return "Could not locate "+this.targetRepository+".";
     }
-    public void GetFilenamesFromRepo(String targetRepo, String subdirectory) throws Exception { // TODO: 3) Get repo filenames
-        String sub    = "omgomgomg";
 
-        // Gets "contents_url" of repository after confirming repository exists.
-        JsonParser parser  = new JsonParser();
+    private void GetContentsURL() throws Exception{
+        JsonParser parser = new JsonParser();
         try {
-            String contentsURL = parser.parse(this.FindSpecificRepo(targetRepo))
+            this.contentsURL = parser.parse(this.FindTargetRepo())
                     .getAsJsonObject()
                     .get("contents_url")
                     .toString()
-                    .replaceAll("\\u007B\\+path\\u007D", subdirectory) // <== replaces {+path} with actual directory.
-                    .replaceAll("\"", "");                  // <== removes extra quotes added by JSON.
-            System.out.println(contentsURL);
+                    .replaceAll("\\u007B\\+path\\u007D", "") // <== replaces {+path}
+                    .replaceAll("\"", "");        // <== removes extra quotes added by JSON.
+        }
+        catch (Exception e) {
+            throw e;
+        }
+    }
 
-        // Queries the API for directory contents using "contents_url"
-        String repoContent = this.startSession("GET", contentsURL);
-            for (:) {
+    private void GetFilenamesFromRepo(String subdirectory, boolean recursiveCall) throws Exception { // TODO: 3) Get repo filenames
+
+        // Gets "contents_url" of repository after confirming repository exists.
+        JsonParser           parser       = new JsonParser();
+        List<ContentDetails> contentsList = new ArrayList<>();
+        try {
+            if (!recursiveCall) {
+                // Queries the API for top-level directory contents url
+                this.GetContentsURL();
+            }
+
+            subdirectory = (subdirectory.matches(""))? subdirectory : subdirectory+"/";
+            String fullRoute = (recursiveCall)? this.contentsURL+subdirectory.replace("\"", "") : this.contentsURL;
+            System.out.println("234: "+fullRoute);
+            JsonArray repoContents = parser.parse
+                    (this.startSession("GET", fullRoute)
+                    ).getAsJsonArray();
+
+                for (JsonElement content: repoContents) {
+                    try {
+                        ContentDetails contentEntry = new ContentDetails(
+                                content.getAsJsonObject().get("name").toString(),
+                                content.getAsJsonObject().get("path").toString(),
+                                content.getAsJsonObject().get("type").toString()
+                        );
+                        if (contentEntry.getType().contains("file")){
+                            contentEntry.setDownload(content.getAsJsonObject().get("download_url").toString());
+                        }
+                        System.out.println("Name: "+contentEntry.getName()+" | Path: "+contentEntry.getPath()+" | Type: "+contentEntry.getType());
+                        contentsList.add(contentEntry);
+                    }
+                    catch (Exception e) {
+                        throw e;
+                    }
+                }
+
+            System.out.println("Receiving contents for "+((recursiveCall)? this.contentsURL+subdirectory : this.contentsURL));
+
+
+
+            for (ContentDetails entry: contentsList) {
+                System.out.println("Current Entry type:"+entry.getType());
+                if (entry.getType().contains("dir")) {
+                // Recursively searches through any content type marked "dir" for files
+                    System.out.println("Second Search:");
+                    this.GetFilenamesFromRepo(entry.getPath(), true);
+                }
+                else if (entry.getType().contains("file")) {
+                // Stores all "download_url" members of type "file" to the filePaths list for downloading.
+                    System.out.println("File found!");
+                    this.filePaths.add(entry);
+                }
+                else {
+                    // If a malformed entry was not caught earlier...
+                    System.out.println("Error proc: "+entry.getName()+" | Type: "+entry.getType()+" | Path: "+entry.getPath());
+                }
 
             }
-        System.out.println("262:"+ repoContent);
+
+
+            // Returns log of all files found to be downloaded by GetFilesFromGithub
+
         }
         catch (Exception e){
             throw e;
         }
-
-
-        // TODO: Create something to store the "name", "path", and "type" of each result.
-
-        // Recursively searches through any content type marked "dir" for files
-
-        // Logs all content type marked "file"
-
-        // Returns log of all files found
     }
+
     // Retrieves the specified file from the repository this class was instantiated with. Using "*" will retrieve every file.
     public void GetFileFromGithub(String fileName, String outDirectory) throws Exception {
 
@@ -286,63 +348,74 @@ public class GHExtractor {
                 "| Contacting Github... | \n" +
                 " ----------------------- \n"
         );
-        // Step 1: Retrieve directory map for repository provided at instantiation of app.
-        System.out.println("Searching for '"+((fileName != "*")? fileName : "ALL TABLES")+"' in directory map");
-        this.GetDirectoryMap();
+        // Step 1: Retrieve filenames and their download paths for repository provided at instantiation.
+        System.out.println("Searching for '"+((fileName != "*")? fileName : "ALL TABLES")+"'");
 
-            // Step 2: Search for {tableName or all tables} script raw data from Github using directory map.
+
+        this.GetFilenamesFromRepo("", false);
+
+            // Step 2: Search for {tableName or all tables} script raw data from Github using filePaths objects list.
+            // Checks for empty, malformed, or non-existent directory map
             boolean found = false;
-                // Checks for empty, malformed, or non-existent directory map
-            if (this.DirectoryMap.size() <= 1) {
-                    System.out.println("Warning: either the directory map file is not located in the repository root, or does not exist.");
+
+            if (this.filePaths.size() <= 1) {
+                    System.out.println("Warning: an abnormally low amount of files were returned while searching target directory.");
             }
             else {
-            for (String[] filePath: this.DirectoryMap) {
+            for (ContentDetails file: this.filePaths) {
 
-                if ((filePath.length < 2) && (filePath.length > 0)) {
-                    System.out.println("Warning: No file location provided for '"+filePath[0]+"'. Skipping...\n");
+                if (file.getDownloadUrl().matches("")){
+                    System.out.println("Warning: No download URL found for '"+file.getName()+"'. Skipping...\n");
                     continue;
                 }
-                    String filename = filePath[0];
-                    String location = filePath[1];
 
                     // Step 3: Parse raw data from {tableName} file.
-                    if ( !(filename == null) && (fileName.contains("*") || filename.contains(fileName)) ) {
-                        System.out.println("Downloading "+filename+" to "+outDirectory+"...");
+                    if ( !(file.getName() == null) && (fileName.contains("*") || file.getName().contains(fileName)) ) {
+                        System.out.println("Downloading "+file.getName()+" to "+outDirectory+"...");
 
-                        String rawData = this.GetFileData(location, filename);
-                        if(!(rawData.contains("Not Found") || rawData.contains("Bad Request"))) {
+                        //        String downloadPath = "https://raw.githubusercontent.com/"+this.username+"/"+this.targetRepository+"/master"+path+name;
+                        //        return this.startSession("GET", downloadPath);
+
+                        String rawData = this.startSession("GET", file.getDownloadUrl());
+                        System.out.println("rawData: "+rawData);
+                        if(!(rawData == null || rawData.matches("") || rawData.contains("Not Found") || rawData.contains("Bad Request"))) {
 
                             // Step 4: Save raw data as a file to provided directory.
                             // Note:   Filename will match what is on github.
                             try {
-                                PrintWriter writer = new PrintWriter("./"+outDirectory+"/"+filename, "UTF-8");
+                                System.out.println("File Path: "+file.getPath());
+                                // Create a parent directory based on repo/db name inside of target output directory
+                                String parentDirectory = "./"+outDirectory+"/"+this.targetRepository+"/";
+                                File newFile = new File(parentDirectory);
+                                newFile.mkdir();
+
+                                PrintWriter writer = new PrintWriter(parentDirectory+file.getName().replaceAll("\"", ""), "UTF-8");
                                 writer.print(rawData);
                                 writer.close();
-                                System.out.println(filename+" downloaded.\n");
-                                found = true;
+                                System.out.println(file.getName()+" downloaded.\n");
+                                //found = true;
                             }
                             catch(FileNotFoundException e) {
                                 System.out.println("The provided directory does not exist. Defaulting to current directory.");
 
-                                PrintWriter writer = new PrintWriter(filename, "UTF-8");
+                                PrintWriter writer = new PrintWriter(file.getName(), "UTF-8");
                                 writer.print(rawData);
                                 writer.close();
-                                System.out.println(filename+" downloaded.\n");
-                                found = true;
+                                System.out.println(file.getName()+" downloaded.\n");
+                                //found = true;
                             }
 
 
                         } else {
-                            System.out.println("Error downloading "+filename+".\n");
+                            System.out.println("Error downloading "+file.getName()+" from "+file.getDownloadUrl()+".\n");
                         }
                     }
                 }
             }
 
             // Only gets output if the above conditions are not met.
-        if (!found) {
-            System.out.println("Sorry: "+fileName+" was not found. Either it is not located in the repository, or is itself a directory. No file downloaded.");
-        }
+//        if (!found) {
+//            System.out.println("Sorry: "++" was not found. Either it is not located in the repository, or an unknown communications error occured. No file downloaded.");
+//        }
     }
 }
