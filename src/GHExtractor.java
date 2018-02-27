@@ -113,8 +113,6 @@ public class GHExtractor
 
                 case 403:
                     this.errMsg = responseCode+": "+session.getResponseMessage();
-                    System.out.println(errMsg+". Rate-Limit may have been exceeded. Please wait a few minutes before trying again.");
-                    this.kill();
                     break;//return("-1");
 
                 case 401:
@@ -159,7 +157,6 @@ public class GHExtractor
 
         // If API responds with an unhandled response code.
         System.out.println("ACK!");
-        this.kill();
         return new JsonObject().toString();
     }
 
