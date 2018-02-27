@@ -5,13 +5,16 @@ public class Tests {
 
         public static void GetAllFilesFromTestRepo(){
             try {
+                PropertiesConfig props = new PropertiesConfig(".env");
+                props.Set();
+
                 GHExtractor extractor = new GHExtractor(
                         "test-repo",
-                        "jsrj",
-                        "44649e73f09ea701189441dd093c711d1f25975a"
+                        System.getProperty("userName"),
+                        System.getProperty("OAuth")
                 );
                 extractor.toggleVerbose();
-                extractor.GetFileFromGithub("*", "files-from-github");
+                extractor.GetFileFromGithub("*", "demo.db", "files-from-github");
             }
             catch (Exception e) {
 

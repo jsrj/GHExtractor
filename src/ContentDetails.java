@@ -35,17 +35,18 @@ public class ContentDetails {
 
     // Setters
     private void setName(String name) {
-        this.name = name;
+        this.name = name.replaceAll("\"", "");
     }
 
     private void setPath(String path) {
-        this.path = path;
+        this.path = path.replaceAll("\"", "");
     }
 
     private void setType(String type) {
-        this.type = type;
+        this.type = type.replaceAll("\"", "");
     }
+
     public void setDownload(String url) {
-        this.download = url;
+        this.download = url.replaceAll("\"", "");
     }
 }

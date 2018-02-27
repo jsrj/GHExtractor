@@ -55,7 +55,7 @@ public class GHExtractor
         System.out.println("Establishing connection to "+URI);
 
         HttpsURLConnection session = (HttpsURLConnection) new URL(URI).openConnection();
-
+        //session.
         session.setRequestMethod     (Mode                                              );
         session.setRequestProperty   ("User-Agent"    , "GHExtractor"                   );
         session.setRequestProperty   ("Accept"        , "application/vnd.github.v3+json," +
@@ -274,14 +274,17 @@ public class GHExtractor
         JsonParser           parser       = new JsonParser();
         List<ContentDetails> contentsList = new ArrayList<>();
         try {
-            if (!recursiveCall) {
+            if (!recursiveCall && subdirectory.matches("")) {
                 // Queries the API for top-level directory contents url
                 this.GetContentsURL();
+            } else {
+                this.contentsURL = "https://api.github.com/repos/"+this.username+"/"+this.targetRepository+"/contents/"+subdirectory;
             }
 
-            subdirectory = (subdirectory.matches(""))? subdirectory : subdirectory+"/";
-            String fullRoute = (recursiveCall)? this.contentsURL+subdirectory.replace("\"", "") : this.contentsURL;
-            System.out.println("234: "+fullRoute);
+            subdirectory     = (subdirectory.matches(""))? subdirectory : subdirectory+"/";
+            System.out.println("subdirectory: "+subdirectory);
+            String fullRoute = (recursiveCall)? this.contentsURL+subdirectory.replaceAll("\"", "") : this.contentsURL;
+            System.out.println("fullRoute: "+fullRoute);
             JsonArray repoContents = parser.parse
                     (this.startSession("GET", fullRoute)
                     ).getAsJsonArray();
@@ -337,7 +340,7 @@ public class GHExtractor
     }
 
     // Retrieves the specified file from the repository this class was instantiated with. Using "*" will retrieve every file.
-    public void GetFileFromGithub(String fileName, String outDirectory) throws Exception {
+    public void GetFileFromGithub(String fileName, String inDirectory, String outDirectory) throws Exception {
 
         // Step 0: if user of parent app specifies a table, then use that table name, otherwise use "*" to denote all tables.
         System.out.println(
@@ -346,32 +349,27 @@ public class GHExtractor
                 " ----------------------- \n"
         );
         // Step 1: Retrieve filenames and their download paths for repository provided at instantiation.
-        System.out.println("Searching for '"+((fileName != "*")? fileName : "ALL TABLES")+"'");
+        System.out.println("Searching for '"+((fileName != "*")? fileName : "ALL FILES")+"' in '"+((inDirectory.matches(""))? this.targetRepository : inDirectory));
 
-
-        this.GetFilenamesFromRepo("", false);
+        // If a specific file and path are provided, query contents of that path to ensure the file sits there.
+        // If the "*" wildcard string is passed in as a filename
+        this.GetFilenamesFromRepo(((fileName != "*")? fileName : inDirectory), false);
 
             // Step 2: Search for {tableName or all tables} script raw data from Github using filePaths objects list.
-            // Checks for empty, malformed, or non-existent directory map
-            boolean found = false;
-
-            if (this.filePaths.size() <= 1) {
+            if (this.filePaths.size() <= 0) {
                     System.out.println("Warning: an abnormally low amount of files were returned while searching target directory.");
             }
             else {
             for (ContentDetails file: this.filePaths) {
 
                 if (file.getDownloadUrl().matches("")){
-                    System.out.println("Warning: No download URL found for '"+file.getName()+"'. Skipping...\n");
+                    System.out.println("Warning: No download URL found for '"+file.getName()+"'. \n");
                     continue;
                 }
 
-                    // Step 3: Parse raw data from {tableName} file.
+                    // Step 3: Parse raw data from file.
                     if ( !(file.getName() == null) && (fileName.contains("*") || file.getName().contains(fileName)) ) {
                         System.out.println("Downloading "+file.getName()+" to "+outDirectory+"...");
-
-                        //        String downloadPath = "https://raw.githubusercontent.com/"+this.username+"/"+this.targetRepository+"/master"+path+name;
-                        //        return this.startSession("GET", downloadPath);
 
                         String rawData = this.startSession("GET", file.getDownloadUrl());
                         System.out.println("rawData: "+rawData);
