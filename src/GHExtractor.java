@@ -16,15 +16,12 @@ public class GHExtractor
     private String         username;
     private String         authToken;
     private String         targetRepository;
-    //private List<String[]> DirectoryMap = new ArrayList<>();
+    private String         contentsURL;
+
     private List<String>   repos        = new ArrayList<>();
     private String         errMsg       = "None";
     private boolean        verbose      = false;
 
-    private String scheduledHTTPMode;
-    private String getScheduledURI;
-
-    private String contentsURL;
 
     // For changing target repo
     public void setTargetRepository(String targetRepository) {
@@ -53,9 +50,18 @@ public class GHExtractor
     private String startSession(String Mode, String URI) throws Exception {
 
         System.out.println("Establishing connection to "+URI);
+        HttpsURLConnection session;
+        try {
+            session = (HttpsURLConnection) new URL(URI).openConnection();
+        }
+        catch (Exception hostErr) {
+            System.out.println("Error: Unable to establish connection to "+hostErr.getMessage()+". Is machine offline or behind proxy?");
+            System.out.println("Will attempt to reconnect in 10 Seconds...");
 
-        HttpsURLConnection session = (HttpsURLConnection) new URL(URI).openConnection();
-        //session.
+            Thread.sleep(10000);
+            return startSession(Mode, URI);
+        }
+
         session.setRequestMethod     (Mode                                              );
         session.setRequestProperty   ("User-Agent"    , "GHExtractor"                   );
         session.setRequestProperty   ("Accept"        , "application/vnd.github.v3+json," +
@@ -382,7 +388,7 @@ public class GHExtractor
                                 // Create a parent directory based on repo/db name inside of target output directory
                                 String parentDirectory = outDirectory+"/"+file.getPath().replaceAll(file.getName(), "");
                                 File newFile = new File(parentDirectory);
-                                newFile.mkdirs();
+                                System.out.println((newFile.mkdirs())? "Directories created successfully" : "Directories already existed or could not be written.");
 
                                 PrintWriter writer = new PrintWriter(parentDirectory+file.getName().replaceAll("\"", ""), "UTF-8");
                                 writer.print(rawData);
