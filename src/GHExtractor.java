@@ -6,22 +6,18 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-
 public class GHExtractor
 {
-
-    // Props - hardcoded for now. Should be set upon app initialization.
-    private List<ContentDetails> filePaths = new ArrayList<>();
-
+    // -- Props --
     private String         username;
     private String         authToken;
     private String         targetRepository;
     private String         contentsURL;
 
-    private List<String>   repos        = new ArrayList<>();
-    private String         errMsg       = "None";
-    private boolean        verbose      = false;
-
+    private List<ContentDetails> filePaths = new ArrayList<>();
+    private List<String>         repos     = new ArrayList<>();
+    private String               errMsg    = "None";
+    private boolean              verbose   = false;
 
     // For changing target repo
     public void setTargetRepository(String targetRepository) {
@@ -45,18 +41,50 @@ public class GHExtractor
         }
     }
 
+    // TODO A: Implement a log file that documents what files were downloaded and when.
+        // 1: Creates file if one does not already exist
+        // 2: If one already exists, read its contents and store to a local list
+        // 3: Log filepath to list.
+        // 4: If filepath has changed, but filename has not, then update filepath instead of new entry.
+        // 5: Iterate through list and update any prelogged file dates
+        // 6: Add new files and dates if new ones were added.
+        // 7: Return a list of files that have changed in GitHub for other method to target for download.
+    // TODO A: Implement a short method that can be called from the download method to log each file downloaded.
+        // 1: Should be able to have just a ContentDetails object passed into it.
+        // 2: Should internally create a timestamp at the time it was called.
+
+    // TODO: Implement a pre-check that queries the GitHub API for any file changes since last download logged.
+        // Read the previously generated log file for update dates
+        // If the log file does not exist, end method and begin download.
+        // If the log file does exist, load contents to a list, and iterate through it for specific filename.
+        // Send conditional request to github to check if a file has changed.
+        // If Github returns a 304 status, then check for the file in local directory instead.
+
+    // TODO: Implement a repo ping that checks if repo returns 200. If 404, then regex search it in all user's repos.
+        // Utilize startSession to probe for direct URI of a repository
+        // If 200, then return the JSON response
+        // If 404, then call FindTargetRepo()
+
+    // TODO: Implement user input option for GetFileFromGithub()
+        // Void method with no parameters that will toggle a user input mode for GFFG.
+        // Option: Toggle Verbose
+        // Option: Filename with guide
+        // Option: inDirectory with guide
+        // Option: outDirectory with guide
+
+    // TODO [CURRENT]: Make all sout logs Verbose-Mode compliant.
 
     // Initiates HTTP session with Github API
     private String startSession(String Mode, String URI) throws Exception {
 
-        System.out.println("Establishing connection to "+URI);
+        System.out.println((this.verbose)? "Establishing connection to "+URI : "");
         HttpsURLConnection session;
         try {
             session = (HttpsURLConnection) new URL(URI).openConnection();
         }
         catch (Exception hostErr) {
-            System.out.println("Error: Unable to establish connection to "+hostErr.getMessage()+". Is machine offline or behind proxy?");
-            System.out.println("Will attempt to reconnect in 10 Seconds...");
+            System.out.println((this.verbose)? "Error: Unable to establish connection to "+hostErr.getMessage()+". Is machine offline or behind proxy?" : "");
+            System.out.println((this.verbose)? "Will attempt to reconnect in 10 Seconds..." : "");
 
             Thread.sleep(10000);
             return startSession(Mode, URI);
@@ -72,7 +100,7 @@ public class GHExtractor
         session.setRequestProperty   ("Username"      ,  this.username                  );
         session.setRequestProperty   ("Authorization" ,  this.authToken                 );
 
-        // Handler for Rate-Limits
+        // Handler for Rate-Limit
         String remaining = session.getHeaderField("X-RateLimit-Remaining");
         String resetTime = session.getHeaderField("X-RateLimit-Reset");
 
@@ -82,7 +110,6 @@ public class GHExtractor
         Date reset           = new Date(limitReset * 1000);
         DateFormat format    = new SimpleDateFormat("KK:mm:ss a");
 
-
         format.setTimeZone(TimeZone.getDefault());
         String formattedLocal = format.format(date);
         String formattedReset = format.format(reset);
@@ -90,10 +117,11 @@ public class GHExtractor
 
         if (queriesRemaining == 0) {
             // Suspends tool until rate-limit has reset or the process is interrupted.
-            System.out.println("Rate Limit Reached...");
+            // This output will be logged regardless of verbosity setting.
+            System.out.println("Warning: API Rate Limit Reached.");
             System.out.println("Reset Time: "+formattedReset);
             System.out.println("Local Time: "+formattedLocal);
-            System.out.println("Will retry once rate limit resets...");
+            System.out.println("Will re-attempt connection once rate limit resets...");
 
             Thread.sleep(timeDifference*1000);
             System.out.println("Re-attempting connection...");
@@ -102,19 +130,19 @@ public class GHExtractor
             this.startSession(Mode, URI);
         }
         else if (queriesRemaining < 5) {
-            System.out.println("Rate Limit Warning: 5 or less API calls remaining. Once this count hits 0, will wait before continuing");
+            // This output will be logged regardless of verbosity setting.
+            System.out.println("Rate Limit Warning: 5 or less API calls remaining.");
         }
 
 
         int responseCode = session.getResponseCode();
-        System.out.println("74: "+responseCode+": "+session.getResponseMessage());
         try {
             switch (responseCode) {
 
                 // Should be extended to account for all Server codes.
                 case 404:
                     this.errMsg = "Error "+responseCode+": "+URI+" "+session.getResponseMessage()+". Check route path.\n";
-                    System.out.println(this.errMsg);
+                    System.out.println((this.verbose)? this.errMsg : "");
                     break;//return("-1");
 
                 case 403:
@@ -123,11 +151,10 @@ public class GHExtractor
 
                 case 401:
                     this.errMsg = "Error "+responseCode+": "+session.getResponseMessage()+". Bad credentials?\n";
-                    System.out.println(this.errMsg);
+                    System.out.println((this.verbose)? this.errMsg : "");
                     break;//return("-1");
 
                 case 200:
-                    System.out.println("63: receiving response...");
                     this.errMsg = "None";
                     String       inputLine;
                     StringBuffer response  = new StringBuffer();
@@ -140,20 +167,20 @@ public class GHExtractor
                     // Format response to human-readable JSON
                     Gson        gson  = new  GsonBuilder().setPrettyPrinting().create();
                     JsonParser  json  = new  JsonParser();
-                    // Print response in JSON, if possible, otherwise print it in plaintext..
+
+                    // Print response in JSON, if possible, otherwise print it in plaintext
                     try {
                         JsonElement elem = json.parse(response.toString());
                         return gson.toJson(elem);
                     }
                     catch (JsonSyntaxException e) {
-                        System.out.println(response.toString());
+                        System.out.println((this.verbose)? response.toString() : "");
                         return response.toString();
-                        //throw e;
                     }
 
                 default:
                     this.errMsg = "Error Encountered";
-                    System.out.println(this.errMsg);
+                    System.out.println((this.verbose)? this.errMsg : "");
                     return "-1";
             }
         } catch (Exception e) {
@@ -162,8 +189,9 @@ public class GHExtractor
         }
 
         // If API responds with an unhandled response code.
-        System.out.println("ACK!");
-        return new JsonObject().toString();
+        this.errMsg = "Unhandled Response Code -- '"+responseCode+": "+session.getResponseMessage()+"'";
+        System.out.println((this.verbose)? this.errMsg: "");
+        return this.errMsg;
     }
 
     private void GetReposForUser(int iteration) throws Exception { // TODO: 1) ...Gets repos by username
@@ -174,8 +202,6 @@ public class GHExtractor
         String resultsPer  = "100";
         int    page        = 1+iteration;
         try {
-
-            // GET: https://api.github.com/users/{username}/repos?page={page}&per_page={resultsPer}
             //    - pulls info on all repos for a specified user
             String apiRes = this.startSession(
                     "GET",
@@ -186,12 +212,12 @@ public class GHExtractor
 
             // Provides console output in verbose mode to let user know that this is doing something.
             if (page == 1) {
-                System.out.println(((verbose)? "Retrieving repository list for "+this.username+"..." : ""));
+                System.out.println(((this.verbose)? "Retrieving repository list for "+this.username+"..." : ""));
             }
 
             // Empty API return check
-            if (apiRes.matches("-1")) {
-                System.out.println("No data was retrieved from GitHub.");
+            if (apiRes.matches("-1") || apiRes.matches(" ") || apiRes.contains("Unhandled Response Code --")) {
+                System.out.println("Warning: No data was retrieved from GitHub.");
                 return;
             }
 
@@ -200,14 +226,13 @@ public class GHExtractor
 
                 JsonArray repoArray = (JsonArray) new JsonParser().parse(apiRes);
 
-                // TODO: Propose standardizing directory structure naming to lowercase-pipe-case
                 // Parses results for repository names and stores them in the "repos" list
                 int results = 0;
                 for (JsonElement repo: repoArray) {
 
                     String repoName = repo.getAsJsonObject().get("name").toString();
 
-                    System.out.println(((verbose)? "Repo "+(((iteration > 0)? results+100 : results)+1)+": "+repoName : ""));
+                    System.out.println(((this.verbose)? "Repo "+(((iteration > 0)? results+100 : results)+1)+": "+repoName : ""));
                     this.repos.add(repoName);
                     results++;
                 }
@@ -217,42 +242,41 @@ public class GHExtractor
                     // Recursive call to retrieve next page of repo list until no pages are left.
                     this.GetReposForUser(++iteration);
                 } else {
-                    System.out.println(((verbose)? "Repository Count: "+ ((results == 0 && page > 1)? 100+page+1 : results) : ""));
+                    System.out.println(((this.verbose)? "Repository Count: "+ ((results == 0 && page > 1)? 100+page+1 : results) : ""));
                     // Any follow up logic to execute once repo search has completed...
                 }
             }
         }
-        // TODO: Remove this once handlers are implemented for Rate Limit being exceeded, or 404/500 errors.
+        // TODO: Remove this once handlers are implemented for 404/500 errors.
         // If, for some reason, an error is encountered, this prevents the standard error from stopping program.
         catch (Exception e) {
             throw e;
         }
-        //return this.repos;
     }
 
     private String FindTargetRepo() throws Exception {
 
         // Populates Repository list
+        // TODO: Execute this only after calling new method that checks direct API route, and that returns false.
         this.GetReposForUser(0);
 
         if (this.repos.size() == 0) {
             System.out.println("Error: Repository list empty.");
             return "";
         }
+        System.out.println((this.verbose)? "Searching repository list for "+this.targetRepository+"..." : "");
 
-        System.out.println("Searching repository list for "+this.targetRepository+"...");
         for (String repo: this.repos) {
             if (repo.contains(this.targetRepository)) {
 
                 System.out.println("\nFound! Scanning "+this.targetRepository+"...\n");
 
-                // Query API for that specific repository information
+                // TODO: Make this be the default action of this method.
+                // Query API for that specific repository's information
                 String apiRes = this.startSession(
                         "GET",
                         "https://api.github.com/repos/"+this.username+"/"+this.targetRepository
                 );
-
-                //System.out.println(apiRes);
                 return apiRes;
             }
         }
@@ -267,16 +291,15 @@ public class GHExtractor
                     .get("contents_url")
                     .toString()
                     .replaceAll("\\u007B\\+path\\u007D", "") // <== replaces {+path}
-                    .replaceAll("\"", "");        // <== removes extra quotes added by JSON.
+                    .replaceAll("\"", "");                   // <== removes extra quotes added by JSON.
         }
         catch (Exception e) {
             throw e;
         }
     }
 
-    private void GetFilenamesFromRepo(String subdirectory, boolean recursiveCall) throws Exception { // TODO: 3) Get repo filenames
-
-        // Gets "contents_url" of repository after confirming repository exists.
+    // Gets "contents_url" of repository after confirming repository exists.
+    private void GetFilenamesFromRepo(String subdirectory, boolean recursiveCall) throws Exception {
         JsonParser           parser       = new JsonParser();
         List<ContentDetails> contentsList = new ArrayList<>();
         try {
@@ -287,10 +310,9 @@ public class GHExtractor
                 this.contentsURL = "https://api.github.com/repos/"+this.username+"/"+this.targetRepository+"/contents/"+subdirectory;
             }
 
-            subdirectory     = (subdirectory.matches(""))? subdirectory : subdirectory+"/";
-            System.out.println("subdirectory: "+subdirectory);
-            //String fullRoute = (recursiveCall)? this.contentsURL+subdirectory.replaceAll("\"", "") : this.contentsURL;
-            //System.out.println("fullRoute: "+fullRoute);
+            subdirectory = (subdirectory.matches(""))? subdirectory : subdirectory+"/";
+
+            // TODO: Implement a log check and conditional request before directly requesting the ContentsURL
             JsonArray repoContents = parser.parse
                     (this.startSession("GET", this.contentsURL)
                     ).getAsJsonArray();
@@ -305,23 +327,20 @@ public class GHExtractor
                         if (contentEntry.getType().contains("file")){
                             contentEntry.setDownload(content.getAsJsonObject().get("download_url").toString());
                         }
-                        System.out.println("Name: "+contentEntry.getName()+" | Path: "+contentEntry.getPath()+" | Type: "+contentEntry.getType());
+                        System.out.println((this.verbose)? ("Name: "+contentEntry.getName()+" | Path: "+contentEntry.getPath()+" | Type: "+contentEntry.getType()) : "");
                         contentsList.add(contentEntry);
                     }
                     catch (Exception e) {
                         throw e;
                     }
                 }
-
-            System.out.println("Receiving contents for "+((recursiveCall)? this.contentsURL+subdirectory : this.contentsURL));
-
-
+            // TODO: Determine if this should be verbosity compliant or not.
+            System.out.println("Receiving contents from "+((recursiveCall)? this.contentsURL+subdirectory : this.contentsURL));
 
             for (ContentDetails entry: contentsList) {
-                System.out.println("Current Entry type:"+entry.getType());
                 if (entry.getType().contains("dir")) {
                 // Recursively searches through any content type marked "dir" for files
-                    System.out.println("Second Search:");
+                    System.out.println("Directory found. Searching...");
                     this.GetFilenamesFromRepo(entry.getPath(), true);
                 }
                 else if (entry.getType().contains("file")) {
@@ -333,12 +352,8 @@ public class GHExtractor
                     // If a malformed entry was not caught earlier...
                     System.out.println("Error proc: "+entry.getName()+" | Type: "+entry.getType()+" | Path: "+entry.getPath());
                 }
-
             }
-
-
             // Returns log of all files found to be downloaded by GetFilesFromGithub
-
         }
         catch (Exception e){
             throw e;
@@ -349,63 +364,72 @@ public class GHExtractor
     public void GetFileFromGithub(String fileName, String inDirectory, String outDirectory) throws Exception {
 
         // Step 0: if user of parent app specifies a table, then use that table name, otherwise use "*" to denote all tables.
-        System.out.println(
+        System.out.println((this.verbose)?
                 " ----------------------- \n" +
                 "| Contacting Github... | \n" +
                 " ----------------------- \n"
-        );
+        : "");
+
         // Step 1: Retrieve filenames and their download paths for repository provided at instantiation.
-        System.out.println("Searching for '"+((fileName != "*")? fileName : "ALL FILES")+"' in '"+((inDirectory.matches(""))? this.targetRepository : inDirectory));
+        // Reports regardless of Verbosity setting.
+        System.out.println("Searching for '"+((fileName != "*")? fileName : "ALL FILES")+"' in '"+((inDirectory.matches(""))? this.targetRepository : inDirectory)+"'");
 
         // If a specific file and path are provided, query contents of that path to ensure the file sits there.
         // If the "*" wildcard string is passed in as a filename
-        this.GetFilenamesFromRepo(((fileName != "*")? fileName : inDirectory), false);
+        this.GetFilenamesFromRepo(((fileName != "*")? inDirectory : inDirectory), false);
 
-            // Step 2: Search for {tableName or all tables} script raw data from Github using filePaths objects list.
+            // Step 2: Search for file raw data from Github using filePaths objects list.
             if (this.filePaths.size() <= 0) {
-                    System.out.println("Warning: an abnormally low amount of files were returned while searching target directory.");
+                    System.out.println((this.verbose)? "Warning: an abnormally low amount of files were returned while searching target directory." : "");
             }
             else {
-            for (ContentDetails file: this.filePaths) {
 
+            for (ContentDetails file: this.filePaths) {
                 if (file.getDownloadUrl().matches("")){
-                    System.out.println("Warning: No download URL found for '"+file.getName()+"'. \n");
+                    System.out.println((this.verbose)? "Warning: No download URL found for '"+file.getName()+"'. \n" : "");
                     continue;
                 }
-
                     // Step 3: Parse raw data from file.
                     if ( !(file.getName() == null) && (fileName.contains("*") || file.getName().contains(fileName)) ) {
-                        System.out.println("Downloading "+file.getName()+" to "+outDirectory+"...");
+
+                        System.out.println((this.verbose)? "Downloading "+file.getName()+" to "+outDirectory+"..." : "");
 
                         String rawData = this.startSession("GET", file.getDownloadUrl());
-                        System.out.println("rawData: "+rawData);
-                        if(!(rawData == null || rawData.matches("") || rawData.contains("Not Found") || rawData.contains("Bad Request"))) {
+                        //System.out.println("rawData: "+rawData); // <-- Can be used to print file contents to screen.
 
-                            // Step 4: Save raw data as a file to provided directory.
-                            // Note:   Filename will match what is on github.
+                        if(!(rawData == null || rawData.matches("") || rawData.contains("Not Found") || rawData.contains("Bad Request"))) {
+                            // Step 4: Save raw data as a file to provided directory. Using filename found on github..
                             try {
-                                System.out.println("File Path: "+file.getPath());
+                                System.out.println((this.verbose)? "File Path: "+file.getPath() : "");
+
                                 // Create a parent directory based on repo/db name inside of target output directory
-                                String parentDirectory = outDirectory+"/"+file.getPath().replaceAll(file.getName(), "");
+                                String parentDirectory = "./"+outDirectory+"/"+file.getPath().replaceAll(file.getName(), "");
                                 File newFile = new File(parentDirectory);
-                                System.out.println((newFile.mkdirs())? "Directories created successfully" : "Directories already existed or could not be written.");
+
+                                // Creates requested directores if they do not already exist.
+                                boolean directoryCreated = newFile.mkdirs();
+                                System.out.println((this.verbose)? ((directoryCreated)? "Directory created successfully" : "Directory not created as it already existed or could not be written.") : "");
 
                                 PrintWriter writer = new PrintWriter(parentDirectory+file.getName().replaceAll("\"", ""), "UTF-8");
                                 writer.print(rawData);
                                 writer.close();
+                                // Outputs regardless of verbosity setting
                                 System.out.println(file.getName()+" downloaded.\n");
                             }
                             catch(FileNotFoundException e) {
-                                System.out.println("The provided directory does not exist. Defaulting to current directory.");
+                                System.out.println((this.verbose)? "The provided directory does not exist. Defaulting to current directory." : "");
 
                                 PrintWriter writer = new PrintWriter(file.getName(), "UTF-8");
                                 writer.print(rawData);
                                 writer.close();
+                                // Outputs regardless of verbosity setting
                                 System.out.println(file.getName()+" downloaded.\n");
                             }
 
 
                         } else {
+                            // Outputs regardless of verbosity setting
+
                             System.out.println("Error downloading "+file.getName()+" from "+file.getDownloadUrl()+".\n");
                         }
                     }

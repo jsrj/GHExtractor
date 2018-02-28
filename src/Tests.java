@@ -18,7 +18,7 @@ public class Tests {
         // Case 2
         public static void GetOneFileFromDemoDB() {
             try {
-                test_extractor.GetFileFromGithub("queries.sql", "demo.db", "files-from-github");
+                test_extractor.GetFileFromGithub("dept.ddl", "demo.db/dept", "files-from-github/anotherDirectory");
             }
             catch (Exception e) {
                 e.printStackTrace();
@@ -27,6 +27,23 @@ public class Tests {
 
         // Case 3
         public static void DownloadEntireRepo() {
+            try {
+                test_extractor.GetFileFromGithub("*", "", "files-from-github");
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Case 4
+        public static void DownloadDifferentRepoToNested() {
+            try {
+                test_extractor.setTargetRepository("GHExtractor");
+                test_extractor.GetFileFromGithub("*", "", "files-from-github/Secondary-outDirectory");
+            }
+            catch (Exception e) {
+
+            }
         }
 
 
@@ -44,7 +61,7 @@ public class Tests {
                     System.getProperty("userName"),
                     System.getProperty("OAuth")
             );
-            test_extractor.toggleVerbose();
+            //test_extractor.toggleVerbose();
         }
         catch (IOException ioe) {
             ioe.printStackTrace();
@@ -53,13 +70,16 @@ public class Tests {
 
         // -- Tests -- START
         // Case 1 - Get all files from a specific directory inside of repository.
-        GetAllFilesFromDemoDB();
+        //GetAllFilesFromDemoDB();
 
         // Case 2 - Get One file by specifically entering it's full path and name.
-        //GetOneFileFromDemoDB();
+        GetOneFileFromDemoDB();
 
         // Case 3 - Completely clone entire target repository to the specified output directory.
         //DownloadEntireRepo();
+
+        // Case 4 - Change target repository and download it into a nested parent directory.
+        //DownloadDifferentRepoToNested();
         // -- Tests -- END
 
     }
