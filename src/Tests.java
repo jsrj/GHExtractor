@@ -5,6 +5,7 @@ public class Tests {
         // Global GHExtractor Object
         private static GHExtractor test_extractor;
 
+        // -- SETUP -- START
         // Case 1
         private static void GetAllFilesFromDemoDB(){
             try {
@@ -45,10 +46,13 @@ public class Tests {
 
             }
         }
-
+        // -- SETUP -- END
 
     public static void main(String[] args) {
         // TODO: Add outputs and assertions to test cases.
+
+
+
 
         // -- Preconfigure -- START
         // Load System properties for all test cases.
@@ -59,21 +63,24 @@ public class Tests {
             test_extractor = new GHExtractor(
                     "test-repo",
                     System.getProperty("userName"),
-                    System.getProperty("OAuth")
+                    System.getProperty("OAuth"   )
             );
-            //test_extractor.toggleVerbose();
+            test_extractor.toggleVerbose();
         }
         catch (IOException ioe) {
             ioe.printStackTrace();
         }
         // -- Preconfigure -- END
 
+
+
+
         // -- Tests -- START
         // Case 1 - Get all files from a specific directory inside of repository.
-        //GetAllFilesFromDemoDB();
+        GetAllFilesFromDemoDB();
 
         // Case 2 - Get One file by specifically entering it's full path and name.
-        GetOneFileFromDemoDB();
+        //GetOneFileFromDemoDB();
 
         // Case 3 - Completely clone entire target repository to the specified output directory.
         //DownloadEntireRepo();

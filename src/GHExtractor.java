@@ -19,17 +19,17 @@ public class GHExtractor
     private String               errMsg    = "None";
     private boolean              verbose   = false;
 
-    // For changing target repo
+    // GHExtractor - For changing target repo
     public void setTargetRepository(String targetRepository) {
         this.targetRepository = targetRepository;
     }
 
-    // For toggling console output on and off
+    // GHExtractor - For toggling console output on and off
     public void toggleVerbose() {
         this.verbose = !this.verbose;
     }
 
-    // Initializer
+    // GHExtractor - Initializer
     public GHExtractor(String tRepo, String uName, String authT) {
         this.username         = uName;
         this.authToken        = (authT == null)? authT : "";
@@ -74,7 +74,7 @@ public class GHExtractor
 
     // TODO [CURRENT]: Make all sout logs Verbose-Mode compliant.
 
-    // Initiates HTTP session with Github API
+    // Initiates GET request to Github API
     private String startSession(String Mode, String URI) throws Exception {
 
         System.out.println((this.verbose)? "Establishing connection to "+URI : "");
@@ -194,6 +194,7 @@ public class GHExtractor
         return this.errMsg;
     }
 
+    // Populates a repository list object based on results of https://api.github.com/users/{username}
     private void GetReposForUser(int iteration) throws Exception { // TODO: 1) ...Gets repos by username
         if (this.repos.size() > 0 && iteration == 0) {
             // Prevents from repeatedly querying the API for information that is already present, while not interfering with recursive calls..
@@ -254,6 +255,7 @@ public class GHExtractor
         }
     }
 
+    // Searches entire repo list of a user if first API request returns 404
     private String FindTargetRepo() throws Exception {
 
         // Populates Repository list
@@ -283,6 +285,7 @@ public class GHExtractor
         return "Could not locate "+this.targetRepository+".";
     }
 
+    // Obtains a nested contents URL for specific files within a directory
     private void GetContentsURL() throws Exception{
         JsonParser parser = new JsonParser();
         try {
@@ -298,7 +301,7 @@ public class GHExtractor
         }
     }
 
-    // Gets "contents_url" of repository after confirming repository exists.
+    // Gets "contents_url" of a directory from github API after confirming repository exists.
     private void GetFilenamesFromRepo(String subdirectory, boolean recursiveCall) throws Exception {
         JsonParser           parser       = new JsonParser();
         List<ContentDetails> contentsList = new ArrayList<>();
@@ -408,7 +411,7 @@ public class GHExtractor
 
                                 // Creates requested directores if they do not already exist.
                                 boolean directoryCreated = newFile.mkdirs();
-                                System.out.println((this.verbose)? ((directoryCreated)? "Directory created successfully" : "Directory not created as it already existed or could not be written.") : "");
+                                System.out.println((this.verbose)? ((directoryCreated)? "Directory created successfully" : "Target directory found, skipping creation.") : "");
 
                                 PrintWriter writer = new PrintWriter(parentDirectory+file.getName().replaceAll("\"", ""), "UTF-8");
                                 writer.print(rawData);
@@ -417,7 +420,7 @@ public class GHExtractor
                                 System.out.println(file.getName()+" downloaded.\n");
                             }
                             catch(FileNotFoundException e) {
-                                System.out.println((this.verbose)? "The provided directory does not exist. Defaulting to current directory." : "");
+                                System.out.println((this.verbose)? "The provided parent directory does not exist. Defaulting to current directory." : "");
 
                                 PrintWriter writer = new PrintWriter(file.getName(), "UTF-8");
                                 writer.print(rawData);

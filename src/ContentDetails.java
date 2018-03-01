@@ -14,16 +14,13 @@ public class ContentDetails {
         this.setType(type);
     }
 
-
     // Getters
     public String getName() {
         return name;
     }
-
     public String getPath() {
         return path;
     }
-
     public String getType() {
         return type;
     }
@@ -34,18 +31,15 @@ public class ContentDetails {
 
 
     // Setters
-    private void setName(String name) {
+    private void setName(String name)  {
         this.name = name.replaceAll("\"", "");
     }
-
-    private void setPath(String path) {
+    private void setPath(String path)  {
         this.path = path.replaceAll("\"", "");
     }
-
-    private void setType(String type) {
+    private void setType(String type)  {
         this.type = type.replaceAll("\"", "");
     }
-
     public void setDownload(String url) {
         this.download = url.replaceAll("\"", "");
     }
