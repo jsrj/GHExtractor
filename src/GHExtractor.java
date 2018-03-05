@@ -41,7 +41,7 @@ public class GHExtractor
         }
     }
 
-    // TODO A: Implement a log file that documents what files were downloaded and when.
+    // TODO [NEXT]: Implement a log file that documents what files were downloaded and when.
         // 1: Creates file if one does not already exist
         // 2: If one already exists, read its contents and store to a local list
         // 3: Log filepath to list.
@@ -49,30 +49,30 @@ public class GHExtractor
         // 5: Iterate through list and update any prelogged file dates
         // 6: Add new files and dates if new ones were added.
         // 7: Return a list of files that have changed in GitHub for other method to target for download.
-    // TODO A: Implement a short method that can be called from the download method to log each file downloaded.
+    // TODO [CURRENT]: Implement a short method that can be called from the download method to log each file downloaded.
         // 1: Should be able to have just a ContentDetails object passed into it.
         // 2: Should internally create a timestamp at the time it was called.
 
-    // TODO: Implement a pre-check that queries the GitHub API for any file changes since last download logged.
+    // TODO [3]: Implement a pre-check that queries the GitHub API for any file changes since last download logged.
         // Read the previously generated log file for update dates
         // If the log file does not exist, end method and begin download.
         // If the log file does exist, load contents to a list, and iterate through it for specific filename.
         // Send conditional request to github to check if a file has changed.
         // If Github returns a 304 status, then check for the file in local directory instead.
 
-    // TODO: Implement a repo ping that checks if repo returns 200. If 404, then regex search it in all user's repos.
+    // TODO [4]: Implement a repo ping that checks if repo returns 200. If 404, then regex search it in all user's repos.
         // Utilize startSession to probe for direct URI of a repository
         // If 200, then return the JSON response
         // If 404, then call FindTargetRepo()
 
-    // TODO: Implement user input option for GetFileFromGithub()
+    // TODO [5]: Implement user input option for GetFileFromGithub()
         // Void method with no parameters that will toggle a user input mode for GFFG.
         // Option: Toggle Verbose
         // Option: Filename with guide
         // Option: inDirectory with guide
         // Option: outDirectory with guide
 
-    // TODO [CURRENT]: Make all sout logs Verbose-Mode compliant.
+    // TODO [DONE]: Make all sout logs Verbose-Mode compliant.
 
     // Initiates GET request to Github API
     private String startSession(String Mode, String URI) throws Exception {
@@ -83,24 +83,24 @@ public class GHExtractor
             session = (HttpsURLConnection) new URL(URI).openConnection();
         }
         catch (Exception hostErr) {
-            System.out.println((this.verbose)? "Error: Unable to establish connection to "+hostErr.getMessage()+". Is machine offline or behind proxy?" : "");
-            System.out.println((this.verbose)? "Will attempt to reconnect in 10 Seconds..." : "");
+            System.out.println((this.verbose)? "Error: Unable to establish connection-- "+hostErr.getMessage()+"." : null);
+            System.out.println((this.verbose)? "Will attempt to reconnect in 10 Seconds..." : null);
 
             Thread.sleep(10000);
-            return startSession(Mode, URI);
+            return this.startSession(Mode, URI);
         }
 
-        session.setRequestMethod     (Mode                                              );
-        session.setRequestProperty   ("User-Agent"    , "GHExtractor"                   );
+        session.setRequestMethod     (Mode                                               );
+        session.setRequestProperty   ("User-Agent"    , "GHExtractor"                    );
         session.setRequestProperty   ("Accept"        , "application/vnd.github.v3+json," +
                                                         "text/html,"                      +
                                                         "application/xhtml+xml,"          +
                                                         "image/jxr,"                      +
-                                                        "*/*"                           );
-        session.setRequestProperty   ("Username"      ,  this.username                  );
-        session.setRequestProperty   ("Authorization" ,  this.authToken                 );
+                                                        "*/*"                            );
+        session.setRequestProperty   ("Username"      ,  this.username                   );
+        session.setRequestProperty   ("Authorization" ,  this.authToken                  );
 
-        // Handler for Rate-Limit
+        // Handler for API Rate-Limits -- START
         String remaining = session.getHeaderField("X-RateLimit-Remaining");
         String resetTime = session.getHeaderField("X-RateLimit-Reset");
 
@@ -126,13 +126,22 @@ public class GHExtractor
             Thread.sleep(timeDifference*1000);
             System.out.println("Re-attempting connection...");
 
-            // Re-attempts HTTPS Session with the last known URI
-            this.startSession(Mode, URI);
+            // Re-attempts Session with the last known URI
+            return this.startSession(Mode, URI);
         }
         else if (queriesRemaining < 5) {
             // This output will be logged regardless of verbosity setting.
             System.out.println("Rate Limit Warning: 5 or less API calls remaining.");
+            System.out.println("Continue or wait until reset? : [C]ontinue | [W]ait");
+            String userInput = System.console().readLine().toUpperCase();
+
+            // If the user requests tool to wait until Rate reset specified by API...
+            if (userInput.matches("W")) {
+                Thread.sleep(timeDifference*1000);
+                return this.startSession(Mode, URI);
+            }
         }
+        // Handler for API Rate-Limits -- END
 
 
         int responseCode = session.getResponseCode();
@@ -174,7 +183,7 @@ public class GHExtractor
                         return gson.toJson(elem);
                     }
                     catch (JsonSyntaxException e) {
-                        System.out.println((this.verbose)? response.toString() : "");
+                        //System.out.println((this.verbose)? response.toString() : ""); <-- can log rawdata.
                         return response.toString();
                     }
 
@@ -195,7 +204,7 @@ public class GHExtractor
     }
 
     // Populates a repository list object based on results of https://api.github.com/users/{username}
-    private void GetReposForUser(int iteration) throws Exception { // TODO: 1) ...Gets repos by username
+    private void GetReposForUser(int iteration) throws Exception {
         if (this.repos.size() > 0 && iteration == 0) {
             // Prevents from repeatedly querying the API for information that is already present, while not interfering with recursive calls..
             return;
@@ -356,7 +365,6 @@ public class GHExtractor
                     System.out.println("Error proc: "+entry.getName()+" | Type: "+entry.getType()+" | Path: "+entry.getPath());
                 }
             }
-            // Returns log of all files found to be downloaded by GetFilesFromGithub
         }
         catch (Exception e){
             throw e;
@@ -375,47 +383,67 @@ public class GHExtractor
 
         // Step 1: Retrieve filenames and their download paths for repository provided at instantiation.
         // Reports regardless of Verbosity setting.
-        System.out.println("Searching for '"+((fileName != "*")? fileName : "ALL FILES")+"' in '"+((inDirectory.matches(""))? this.targetRepository : inDirectory)+"'");
+        System.out.println
+                (
+                        "Searching for '"+((fileName != "*")? fileName : "ALL FILES")
+                                +"' in '"+((inDirectory.matches(""))? this.targetRepository : inDirectory)+"'"
+                );
 
         // If a specific file and path are provided, query contents of that path to ensure the file sits there.
-        // If the "*" wildcard string is passed in as a filename
+        // If the "*" wildcard string is passed in as a filename...
         this.GetFilenamesFromRepo(((fileName != "*")? inDirectory : inDirectory), false);
 
-            // Step 2: Search for file raw data from Github using filePaths objects list.
-            if (this.filePaths.size() <= 0) {
-                    System.out.println((this.verbose)? "Warning: an abnormally low amount of files were returned while searching target directory." : "");
-            }
-            else {
+        // Step 2: Search for file raw data from Github using filePaths objects list.
+        if (this.filePaths.size() <= 0) {
+                System.out.println
+                        ((this.verbose)?
+                                "Warning: an abnormally low amount of files were " +
+                                "returned while searching target directory." : null
+                        );
+        }
+        else {
 
             for (ContentDetails file: this.filePaths) {
                 if (file.getDownloadUrl().matches("")){
-                    System.out.println((this.verbose)? "Warning: No download URL found for '"+file.getName()+"'. \n" : "");
+                    System.out.println
+                            ((this.verbose)?
+                                    "Warning: No download URL found for '"+file.getName()+"'. \n" : null
+                            );
                     continue;
                 }
                     // Step 3: Parse raw data from file.
                     if ( !(file.getName() == null) && (fileName.contains("*") || file.getName().contains(fileName)) ) {
 
-                        System.out.println((this.verbose)? "Downloading "+file.getName()+" to "+outDirectory+"..." : "");
+                        System.out.println
+                                ((this.verbose)?
+                                        "Downloading "+file.getName()+" to "+outDirectory+"..." : null
+                                );
 
                         String rawData = this.startSession("GET", file.getDownloadUrl());
-                        //System.out.println("rawData: "+rawData); // <-- Can be used to print file contents to screen.
 
-                        if(!(rawData == null || rawData.matches("") || rawData.contains("Not Found") || rawData.contains("Bad Request"))) {
+                        if(
+                            !(rawData == null || rawData.matches("")
+                                    || rawData.contains("Not Found")
+                                    || rawData.contains("Bad Request"))) {
                             // Step 4: Save raw data as a file to provided directory. Using filename found on github..
                             try {
-                                System.out.println((this.verbose)? "File Path: "+file.getPath() : "");
-
                                 // Create a parent directory based on repo/db name inside of target output directory
                                 String parentDirectory = "./"+outDirectory+"/"+file.getPath().replaceAll(file.getName(), "");
                                 File newFile = new File(parentDirectory);
 
                                 // Creates requested directores if they do not already exist.
                                 boolean directoryCreated = newFile.mkdirs();
-                                System.out.println((this.verbose)? ((directoryCreated)? "Directory created successfully" : "Target directory found, skipping creation.") : "");
+                                System.out.println
+                                        ((this.verbose)? ((directoryCreated)?
+                                                 "Directory created successfully"
+                                                :"Target directory found, skipping creation.")
+                                                : null
+                                        );
 
                                 PrintWriter writer = new PrintWriter(parentDirectory+file.getName().replaceAll("\"", ""), "UTF-8");
                                 writer.print(rawData);
                                 writer.close();
+
                                 // Outputs regardless of verbosity setting
                                 System.out.println(file.getName()+" downloaded.\n");
                             }
@@ -425,14 +453,13 @@ public class GHExtractor
                                 PrintWriter writer = new PrintWriter(file.getName(), "UTF-8");
                                 writer.print(rawData);
                                 writer.close();
+
                                 // Outputs regardless of verbosity setting
                                 System.out.println(file.getName()+" downloaded.\n");
                             }
-
-
-                        } else {
+                        }
+                        else {
                             // Outputs regardless of verbosity setting
-
                             System.out.println("Error downloading "+file.getName()+" from "+file.getDownloadUrl()+".\n");
                         }
                     }

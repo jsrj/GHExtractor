@@ -56,7 +56,6 @@ public class PropertiesConfig {
             System.out.println("'"+key+"' property set.");
             System.setProperty(key, val);
         }
-        System.out.println("\n");
     }
 
     // This method reads from a .env file.
