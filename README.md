@@ -20,6 +20,7 @@
 <i>
 	In it's current form, this tool <u>cannot</u> read files who's raw data 	exists in binary form as it is primarily used to read `*.ddl`, `*.sql`, 	`*.js`, `*.sh` or `*.py` scripts currently.
 </i>
+
 ---
 <h3><u>How to use</u>:</h3>
 
